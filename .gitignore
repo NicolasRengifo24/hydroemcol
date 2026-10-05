@@ -1,0 +1,31 @@
+# ── Entorno virtual / Python ──────────────────────────────
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ── Variables de entorno / secretos ───────────────────────
+.env
+*.env
+!*.env.example
+
+# ── Frontend / Node ─────────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# ── Django ────────────────────────────────────────────────
+db.sqlite3
+media/
+staticfiles/
+*.log
+
+# ── Editores / SO ──────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

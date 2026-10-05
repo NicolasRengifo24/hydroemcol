@@ -1,0 +1,39 @@
+{% extends "admin/change_form.html" %}
+{% comment %}
+Panel de cierre del servicio (T27).
+
+Muestra siempre el `detalle` del motivo y solo habilita el botón de finalizar
+cuando `puede_finalizar` es verdadero (RF-COT-11, RF-COT-12).
+
+El botón es un `submit` del formulario que ya está abierto, no un formulario
+anidado: dentro de `<form>` no se puede poner otro `<form>`, y el navegador
+descartaría el que se enviara. Al guardarse, `response_change` ve la clave
+`finalizar_servicio` y ejecuta el cierre.
+
+Ojo: este botón es una cortesía para no ofrecer una acción que el backend va a
+rechazar. La garantía de que un servicio bloqueado no se cierra está en
+`acciones.finalizar_servicio`, que vuelve a validar las reglas.
+{% endcomment %}
+
+{% block after_related_objects %}
+  {{ block.super }}
+  <div class="module">
+    <h2>Cierre del servicio</h2>
+
+    {% if puede_finalizar_servicio %}
+      <p>
+        Todos los componentes están finalizados. La acción de finalizar el
+        servicio está habilitada.
+      </p>
+      <input type="submit" name="finalizar_servicio"
+             value="Finalizar servicio" class="default">
+    {% else %}
+      <p>
+        La acción de finalizar el servicio no está habilitada todavía.
+      </p>
+      {% if resumen_cierre %}
+        <p><strong>Motivo:</strong> {{ resumen_cierre.detalle }}</p>
+      {% endif %}
+    {% endif %}
+  </div>
+{% endblock %}
