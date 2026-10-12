@@ -8,6 +8,6 @@ docs/constitution.md y la skill sdd.
 
 1. Escribe primero los tests y comprueba que fallan.
 2. Escribe el código hasta que pasen.
-3. Ejecuta node --test y muéstrame el resultado.
+3. Ejecuta django test y muéstrame el resultado.
 4. Marca $2 como hecha en tasks.md e indica qué RF cubre.
    Después PÁRATE. No empieces la siguiente tarea.
