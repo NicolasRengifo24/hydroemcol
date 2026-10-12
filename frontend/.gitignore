@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Stray compiled output (el código fuente es TypeScript; evita .js generados por tsc)
+src/**/*.js
+vite.config.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

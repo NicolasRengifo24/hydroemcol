@@ -19,6 +19,7 @@ from .models import (
     MedioAprobacion,
     ResultadoAprobacion,
     Servicio,
+    TipoServicio,
 )
 from .reglas import (
     componentes_no_finalizados,
@@ -401,3 +402,49 @@ class ServicioPublicoSerializer(serializers.ModelSerializer):
     def get_cotizaciones_pendientes(self, obj):
         qs = obj.cotizaciones.filter(estado=EstadoCotizacion.PENDIENTE)
         return CotizacionPublicoSerializer(qs, many=True).data
+class ComponenteSolicitudPublicaSerializer(serializers.Serializer):
+    tipo = serializers.CharField(max_length=100)
+    marca = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
+    referencia = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
+    descripcion = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
+    cantidad = serializers.IntegerField(min_value=1, default=1)
+
+
+class SolicitudPublicaSerializer(serializers.Serializer):
+    nombre_cliente = serializers.CharField(max_length=150)
+    correo_electronico = serializers.EmailField(max_length=254)
+    telefono = serializers.CharField(max_length=50)
+    tipo_servicio = serializers.ChoiceField(choices=TipoServicio.choices)
+    descripcion_problema = serializers.CharField()
+    componentes = ComponenteSolicitudPublicaSerializer(many=True, allow_empty=False)
+    idempotency_key = serializers.CharField(max_length=100, required=False, allow_blank=True)
+
+    def validate_correo_electronico(self, value):
+        from . import validators
+        return validators.normalizar_correo(value)
+
+    def validate_telefono(self, value):
+        from . import validators
+        return validators.normalizar_telefono(value)
+
+    def validate(self, attrs):
+        from . import reglas
+        from django.db.models import Q
+
+        correo_norm = attrs.get('correo_electronico')
+        telefono_norm = attrs.get('telefono')
+
+        q = Q()
+        if correo_norm:
+            q |= Q(cliente__email=correo_norm)
+        if telefono_norm:
+            q |= Q(cliente__telefono=telefono_norm)
+
+        if q:
+            estados_cerrados = reglas.estados_cerrados()
+            existe = Servicio.objects.filter(q).exclude(estado__in=estados_cerrados).exists()
+            if existe:
+                raise serializers.ValidationError({
+                    'non_field_errors': ['Parece que tienes una solicitud en curso. ¿Quieres continuar con ella o crear una nueva solicitud?']
+                })
+        return attrs

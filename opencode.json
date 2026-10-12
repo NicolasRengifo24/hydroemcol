@@ -7,7 +7,9 @@
         "npx",
         "-y",
         "chrome-devtools-mcp@latest",
-        "--no-usage-statistics"
+        "--no-usage-statistics",
+        "--executablePath",
+        "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
       ]
     },
     "context7": {

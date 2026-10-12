@@ -40,6 +40,7 @@ from .serializers import (
     RespuestaCotizacionInputSerializer,
     ServicioPublicoSerializer,
     ServicioSerializer,
+    SolicitudPublicaSerializer,
 )
 
 
@@ -371,5 +372,47 @@ class SeguimientoAprobarView(APIView):
 
         return Response(
             AprobacionServicioSerializer(aprobacion).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+class SolicitudPublicaCreateView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = SolicitudPublicaSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+        from django.db import transaction
+
+        with transaction.atomic():
+            cliente, _ = Cliente.objects.get_or_create(
+                email=data['correo_electronico'].strip().lower(),
+                defaults={
+                    'nombre': data['nombre_cliente'].strip(),
+                    'telefono': data['telefono'].strip(),
+                },
+            )
+            servicio = Servicio.objects.create(
+                cliente=cliente,
+                tipo_servicio=data['tipo_servicio'],
+                descripcion_solicitud=data['descripcion_problema'],
+            )
+            for comp in data.get('componentes', []):
+                Componente.objects.create(
+                    servicio=servicio,
+                    tipo=comp['tipo'],
+                    marca=comp.get('marca') or '',
+                    referencia=comp.get('referencia') or '',
+                    descripcion=comp.get('descripcion') or '',
+                    cantidad=comp.get('cantidad', 1),
+                )
+
+        return Response(
+            {
+                'codigo': servicio.codigo,
+                'enlace_seguimiento': f'/seguimiento/{servicio.token_seguimiento}',
+            },
             status=status.HTTP_201_CREATED,
         )

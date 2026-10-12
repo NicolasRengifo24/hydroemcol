@@ -1,4 +1,4 @@
-# Solicitud de servicio en banco de pruebas
+﻿Estado: aprobada
 
 Especificación funcional · Hidroemcol
 
@@ -99,7 +99,7 @@ volver más adelante y ver el avance de mi servicio sin depender de mensajes sue
   fotografías por solicitud.
 - **RF-5.2** Si se alcanza el máximo de cinco, entonces el sistema impide agregar una sexta
   e informa que el límite fue alcanzado.
-- **RF-5.3** Si una fotografía excede diez megabytes o no está en formato JPG o PNG,
+- **RF-5.3** Si una fotografía no está en alguno de los formatos aceptados (JPG, JPEG o PNG),
   entonces el sistema rechaza esa fotografía, informa el límite y permite continuar
   con el resto.
 - **RF-5.4** Si el cliente no adjunta ninguna fotografía, entonces el sistema permite enviar
@@ -253,9 +253,4 @@ La funcionalidad está completa cuando:
 
 ## 9. Dudas abiertas
 
-- **[NECESITA ACLARACIÓN]** ¿Cuánto tiempo se conservan las fotografías después de la solicitud
-  y a quién corresponden los derechos de uso de esas imágenes?
-- **[NECESITA ACLARACIÓN]** El rechazo de una cotización es por componente y no cierra el
-  servicio, pero el modelo de datos actual no tiene dónde registrarlo: la cotización es del
-  servicio, sus líneas no saben a qué componente pertenecen, y el componente no tiene estado.
-  Hace falta definir cómo se guarda esa información antes de poder aplicarla.
+- [ANOTACIÓN] El requisito RF-10.1 ("sin tener que recargar la página") queda anotado para tenerlo en cuenta cuando se elabore la spec del panel administrativo; no forma parte de esta versión.
