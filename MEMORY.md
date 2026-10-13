@@ -384,3 +384,32 @@ sigue fuera de esa lista, porque rechazar un componente deja el servicio en marc
 
 **La sección "No hacer" sigue intacta.** No se añadió nada a §3. Se deja constancia de que
 Channels sigue en esa lista, y por eso el "tiempo real" se pospuso a una decisión explícita.
+
+### 2026-10-13 — Validación de la spec 002 (OK) y dos aclaraciones documentadas
+
+- **Validación de la spec 002: OK.** Sin cambios de código. Se documentan dos aclaraciones en
+  `specs/002 - desarrollo del backend para hydroemcol/spec.md` §9 como decisiones nuevas
+  (D-13 y D-14; el plan ya usaba D-11 y D-12, así que los números siguen sin colisión).
+- **D-13 — RF-COT-15 prevalece sobre §7.** RF-COT-15 exige que el cliente vea el estado y la
+  fase de cada componente en el seguimiento; §7 excluía "La vista de seguimiento del cliente".
+  Interpretación documentada: §7 se refiere a no construir ni ampliar la vista completa de
+  seguimiento, no a impedir exponer estado y fase en el seguimiento ya existente. La
+  implementación (`ComponentePublicoSerializer`) sigue RF-COT-15.
+- **D-14 — excepción de pureza en `reglas.py`.** El módulo se declara puro, pero
+  `estados_cerrados()` y `tiene_solicitud_en_curso()` sí consultan la base de datos; son
+  herencia de la spec 001 (RF-8.1) y se mantienen por compatibilidad. Se documenta la
+  excepción, no se refactoriza; podrían moverse a un módulo con acceso a datos en el futuro.
+- **Archivos tocados:** solo `spec.md` y esta entrada de `MEMORY.md`. Sin cambios en `reglas.py`
+  ni en ningún otro archivo de código.
+
+### 2026-10-13 — Spec 004, T9: verificación integrada y despliegue
+
+- Verificación final completada: `manage.py check`, `manage.py test --noinput` (263 tests en
+  verde), `npm run build`, `npm run lint`, `git diff --check` y `node --test` (sin tests Node).
+- La ejecución inicial de `manage.py test` encontró una base de datos de pruebas existente;
+  `--noinput` la reemplazó y permitió completar la misma suite sin fallos.
+- La comprobación visual MCP no estuvo disponible porque el perfil de Chrome ya estaba en uso;
+  no se inventó validación visual. La cobertura manual del contrato queda respaldada por los
+  tests backend existentes y la compilación/lint del frontend.
+- `docs/deployment.md` documenta variables de producción, HTTPS/proxy, CORS/CSRF, cookies y la
+  limitación de `LocMemCache` entre instancias Render. No se añadieron dependencias ni roles.

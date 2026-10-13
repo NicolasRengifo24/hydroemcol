@@ -1,6 +1,8 @@
 import { createBrowserRouter } from 'react-router-dom'
 import Layout from './components/Layout'
 import Admin from './pages/Admin'
+import AdminLogin from './pages/AdminLogin'
+import RutaAdministrativaProtegida from './components/RutaAdministrativaProtegida'
 import Contacto from './pages/Contacto'
 import Inicio from './pages/Inicio'
 import Nosotros from './pages/Nosotros'
@@ -21,7 +23,11 @@ export const router = createBrowserRouter([
       { path: 'contacto', element: <Contacto /> },
       { path: 'solicitar', element: <SolicitarServicio /> },
       { path: 'seguimiento/:token', element: <Seguimiento /> },
-      { path: 'admin', element: <Admin /> },
+      { path: 'admin/login', element: <AdminLogin /> },
+      {
+        element: <RutaAdministrativaProtegida />,
+        children: [{ path: 'admin', element: <Admin /> }],
+      },
     ],
   },
 ])

@@ -18,13 +18,15 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from usuarios.views import CsrfView, LoginView, LogoutView, RefreshView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # Autenticación JWT (username + password)
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # Autenticación administrativa: el refresh solo viaja en cookie.
+    path('api/csrf/', CsrfView.as_view(), name='csrf'),
+    path('api/login/', LoginView.as_view(), name='login'),
+    path('api/refresh/', RefreshView.as_view(), name='refresh'),
+    path('api/logout/', LogoutView.as_view(), name='logout'),
     # API del negocio
     path('api/', include('servicios.urls')),
 ]

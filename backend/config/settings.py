@@ -11,10 +11,12 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,20 +25,47 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 
+def _variable_boolean(nombre, predeterminado=False):
+    valor = os.getenv(nombre)
+    if valor is None:
+        return predeterminado
+    return valor.strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _variable_lista(nombre, predeterminado):
+    valor = os.getenv(nombre)
+    if valor is None:
+        return predeterminado
+    return [elemento.strip() for elemento in valor.split(',') if elemento.strip()]
+
+
+def _rechazar_wildcard(nombre, valores):
+    if '*' in valores:
+        raise ImproperlyConfigured(
+            f'{nombre} no puede contener el wildcard "*".'
+        )
+    return valores
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # En desarrollo viene de .env; el valor por defecto solo sirve localmente.
-SECRET_KEY = os.getenv(
-    'SECRET_KEY',
-    'django-insecure-clave-solo-para-desarrollo-local',
-)
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = _variable_boolean('DEBUG', False)
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'django-insecure-clave-solo-para-desarrollo-local'
+    else:
+        raise ImproperlyConfigured('SECRET_KEY es obligatoria cuando DEBUG=False.')
+
+ALLOWED_HOSTS = _rechazar_wildcard(
+    'ALLOWED_HOSTS',
+    _variable_lista('ALLOWED_HOSTS', ['localhost', '127.0.0.1']),
+)
 
 
 # Application definition
@@ -51,6 +80,7 @@ INSTALLED_APPS = [
     # Terceros
     'corsheaders',
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
     # Propias
     'usuarios',
     'servicios',
@@ -147,12 +177,85 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 
-# CORS: permite que el frontend React (Vite en http://localhost:5173)
-# consuma la API. En producción se ajusta al dominio real del frontend.
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-]
+# JWT: el access vive 15 minutos y el refresh un día. La vista de autenticación
+# usará las opciones de cookie de abajo; el refresh nunca se devuelve en JSON.
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+}
+
+
+# Cookies y seguridad de sesión. No se fija Domain: así la cookie es host-only.
+AUTH_COOKIE_NAME = 'refresh_token'
+AUTH_COOKIE_PATH = '/api/'
+AUTH_COOKIE_HTTP_ONLY = True
+AUTH_COOKIE_SAMESITE = os.getenv('AUTH_COOKIE_SAMESITE', 'Lax').strip()
+if AUTH_COOKIE_SAMESITE not in {'Lax', 'Strict', 'None'}:
+    raise ImproperlyConfigured('AUTH_COOKIE_SAMESITE debe ser Lax, Strict o None.')
+AUTH_COOKIE_SECURE = _variable_boolean('AUTH_COOKIE_SECURE', not DEBUG) or not DEBUG
+if AUTH_COOKIE_SAMESITE == 'None' and not AUTH_COOKIE_SECURE:
+    raise ImproperlyConfigured('SameSite=None requiere AUTH_COOKIE_SECURE=True.')
+
+
+# CORS y CSRF solo aceptan orígenes declarados explícitamente. Nunca se combina
+# wildcard con credenciales.
+CORS_ALLOWED_ORIGINS = _rechazar_wildcard(
+    'CORS_ALLOWED_ORIGINS',
+    _variable_lista(
+        'CORS_ALLOWED_ORIGINS',
+        ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    ),
+)
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = _rechazar_wildcard(
+    'CSRF_TRUSTED_ORIGINS',
+    _variable_lista(
+        'CSRF_TRUSTED_ORIGINS',
+        ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    ),
+)
+
+
+# HTTPS/proxy y cookies seguras son configurables por entorno. En producción
+# se fuerzan los valores seguros aunque falte una variable explícita.
+SECURE_SSL_REDIRECT = _variable_boolean('SECURE_SSL_REDIRECT', not DEBUG) or not DEBUG
+SECURE_PROXY_SSL_HEADER = None
+if _variable_boolean('TRUST_PROXY_SSL', not DEBUG):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+
+
+# Caché local para límites de autenticación sin introducir Redis. En Render, con
+# varias instancias, cada proceso mantiene su propio contador: esta limitación
+# operativa no ofrece un límite global fuerte y se acepta sin añadir infraestructura.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': os.getenv('CACHE_LOCATION', 'hydroemcol-auth'),
+    }
+}
+
+
+# Logger dedicado: no recibe el request ni cuerpos/cookies/encabezados completos.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'consola_seguridad': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'usuarios.seguridad': {
+            'handlers': ['consola_seguridad'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
 
 
 # Django REST Framework

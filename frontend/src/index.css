@@ -109,6 +109,112 @@ body {
   padding: 2rem 1.5rem;
 }
 
+.login-page {
+  min-height: min(650px, 100vh);
+  display: grid;
+  place-items: center;
+  padding: 1rem 0;
+  background:
+    linear-gradient(135deg, rgb(46 49 146 / 8%), transparent 55%),
+    var(--color-bg-alt);
+}
+
+.login-card {
+  width: min(100%, 30rem);
+  padding: clamp(1.5rem, 5vw, 2.75rem);
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-top: 5px solid var(--color-accent);
+  box-shadow: 0 12px 30px rgb(33 33 33 / 10%);
+}
+
+.login-card__intro h1 {
+  margin: 0;
+  color: var(--color-primary-dark);
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2rem);
+}
+
+.login-card__intro p:last-child {
+  margin-bottom: 0;
+  color: var(--color-text-muted);
+}
+
+.login-card__eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.login-form {
+  display: grid;
+  gap: 1.1rem;
+  margin-top: 2rem;
+}
+
+.login-form__campo {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.login-form__campo label {
+  font-weight: 700;
+}
+
+.login-form__campo input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.7rem 0.8rem;
+  color: var(--color-text);
+  font: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-white);
+}
+
+.login-form__campo input:focus-visible,
+.login-form__submit:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--color-accent);
+}
+
+.login-form__campo input:disabled {
+  background: var(--color-bg-alt);
+}
+
+.login-form__error {
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border-left: 4px solid var(--color-danger);
+}
+
+.login-form__submit {
+  min-height: 48px;
+  padding: 0.7rem 1rem;
+  color: var(--color-white);
+  font: inherit;
+  font-weight: 800;
+  border: 0;
+  border-radius: 4px;
+  background: var(--color-primary);
+  cursor: pointer;
+}
+
+.login-form__submit:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.login-form__submit:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .page h1 {
   margin-top: 0;
   color: var(--color-primary-dark);
