@@ -14,7 +14,7 @@
   --color-primary: #2e3192;
   --color-primary-dark: #23266e;
   --color-primary-soft: #eaebf6;
-  --color-accent: #ffcb1f;
+  --color-accent: #ffc908;
   --color-accent-soft: #fff6d6;
   --color-border: #dbe2e8;
   --color-white: #ffffff;
@@ -52,6 +52,7 @@ body {
   top: 0;
   z-index: 10;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -64,6 +65,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  min-height: 44px;
+  max-width: 100%;
   font-weight: 700;
   font-size: 1.1rem;
   color: var(--color-primary);
@@ -73,15 +76,19 @@ body {
 .nav {
   display: flex;
   flex-wrap: wrap;
+  min-width: 0;
   gap: 0.25rem;
 }
 
 .nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   padding: 0.4rem 0.75rem;
   border-radius: 6px;
   color: var(--color-text-muted);
   text-decoration: none;
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .nav-link:hover {
@@ -117,7 +124,31 @@ body {
   padding: 1rem 1.5rem;
   text-align: center;
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: 1rem;
   border-top: 1px solid var(--color-border);
   background: var(--color-bg-alt);
+}
+
+.footer__facebook {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 0.5rem;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+.footer__facebook:hover {
+  text-decoration: underline;
+}
+
+.brand:focus-visible,
+.nav-link:focus-visible,
+.footer__facebook:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px var(--color-accent);
 }

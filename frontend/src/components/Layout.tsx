@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import Logo from './brand/Logo'
+import { URL_FACEBOOK } from '../config/sitio'
 
 const navItems = [
   { to: '/', label: 'Inicio' },
@@ -37,6 +38,14 @@ function Layout() {
 
       <footer className="footer">
         <p>HydroEmcol — sistemas electrohidráulicos</p>
+        <a
+          className="footer__facebook"
+          href={URL_FACEBOOK}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Facebook
+        </a>
       </footer>
     </div>
   )

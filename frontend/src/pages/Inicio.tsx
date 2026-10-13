@@ -1,9 +1,19 @@
+import { Hero } from '../components/inicio/Hero'
+import { BloqueServiciosDestacados } from '../components/inicio/BloqueServiciosDestacados'
+import { BloqueCapacidadTecnica } from '../components/inicio/BloqueCapacidadTecnica'
+import { BloquePasos } from '../components/inicio/BloquePasos'
+import { CTASection } from '../components/inicio/CTASection'
+import '../components/inicio/inicio.css'
+
 function Inicio() {
   return (
-    <section className="page">
-      <h1>HydroEmcol</h1>
-      <p>Página de inicio — contenido por definir (Fase 3).</p>
-    </section>
+    <>
+      <Hero ctaTexto="Solicitar un servicio" ctaTo="/solicitar" />
+      <BloqueServiciosDestacados />
+      <BloqueCapacidadTecnica />
+      <BloquePasos />
+      <CTASection />
+    </>
   )
 }
 

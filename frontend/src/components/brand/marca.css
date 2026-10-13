@@ -2,48 +2,29 @@
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
+  max-width: 100%;
   color: var(--color-primary);
   text-decoration: none;
 }
 
-.marca__tuerca {
-  width: 2.4rem;
+.marca__imagen {
+  display: block;
   height: 2.4rem;
-  flex-shrink: 0;
+  width: auto;
+  max-width: 100%;
 }
 
-.marca__texto {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.05;
+.marca__imagen--icono {
+  height: 2.4rem;
+  width: 2.4rem;
 }
 
-.marca__nombre {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.25rem;
-  letter-spacing: 0.12em;
-  color: var(--color-primary);
-}
-
-.marca__tagline {
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 0.6rem;
-  letter-spacing: 0.18em;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-}
-
-.marca--grande .marca__tuerca {
-  width: 3.4rem;
+.marca--grande .marca__imagen {
   height: 3.4rem;
 }
 
-.marca--grande .marca__nombre {
-  font-size: 1.8rem;
-}
-
-.marca--grande .marca__tagline {
-  font-size: 0.72rem;
+.marca--sobre-oscuro {
+  background: var(--color-white);
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
 }
