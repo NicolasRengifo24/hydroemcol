@@ -111,6 +111,20 @@ class Servicio(models.Model):
         default=EstadoServicio.SOLICITADO, verbose_name='Estado',
     )
     descripcion_solicitud = models.TextField(verbose_name='Descripción de la solicitud')
+
+    # Preferencias de entrega indicadas por el cliente (RF-3.1). Son solo
+    # informativas para el administrativo: el sistema no calcula ni gestiona
+    # transporte (RF-3.3).
+    entregar_en_banco = models.BooleanField(
+        default=False, verbose_name='Entregar en el banco',
+    )
+    avisar_para_coordinar = models.BooleanField(
+        default=False, verbose_name='Avisar para coordinar la entrega',
+    )
+    recoger = models.BooleanField(
+        default=False, verbose_name='Recoger el componente',
+    )
+
     fecha_solicitud = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de solicitud')
     fecha_recepcion = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de recepción')
     fecha_finalizacion = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de finalización')
@@ -120,6 +134,14 @@ class Servicio(models.Model):
     # 23 bytes aleatorios seguros codificados en URL (~32 caracteres).
     token_seguimiento = models.CharField(
         max_length=64, unique=True, blank=True, verbose_name='Token de seguimiento',
+    )
+
+    # Clave de idempotencia enviada por el formulario publico (RF-7.5). Guarda
+    # el valor de `Idempotency-Key` del primer envio para responder igual ante
+    # reintentos (doble clic, recarga, otra pestana) sin crear otra solicitud.
+    idempotency_key = models.CharField(
+        max_length=100, blank=True, default='', db_index=True,
+        verbose_name='Clave de idempotencia',
     )
 
     observaciones_internas = models.TextField(blank=True, verbose_name='Observaciones internas')

@@ -12,7 +12,10 @@ La spec está aprobada. No tiene dudas abiertas relevantes (RF-10.1 queda anotad
 | `backend/servicios/serializers.py` | Modificar | Crear `SolicitudPublicaSerializer`. Validación de contacto, componentes, fotos, duplicados e idempotencia. No pierde datos en errores. | RF-2.1–2.4, RF-3.3, RF-4.1–4.5, RF-5.1–5.3, RF-7.1–7.5, RF-8.1–8.6 |
 | `backend/servicios/views.py` | Modificar | Crear `SolicitudPublicaCreateView` (POST, `AllowAny`). Creación en `transaction.atomic`, cliente/servicio/componentes/fotos, generación de token y código, manejo de duplicados + confirmar, soporte Idempotency-Key. | RF-6.1, RF-7.1–7.6, RF-8.1–8.6, RF-9.1–9.3 |
 | `backend/servicios/urls.py` | Modificar | Añadir ruta pública `POST /api/solicitudes/`. No altera rutas existentes. | RF-1.1–1.2, RF-7.1, RF-9.1 |
-| `backend/servicios/models.py` | Modificar | Sin cambio de esquema obligatorio. Se mantiene `Fotografia.url` (URLField). El serializer acepta archivos multipart y genera la URL tras subida. | RF-5 |
+| `backend/servicios/models.py` | Modificar | Añadir 3 booleanos de preferencia de entrega a `Servicio` (RF-3). Se mantiene `Fotografia.url` (URLField). | RF-3, RF-5 |
+| `backend/servicios/migrations/0004_preferencias_entrega.py` | Crear | Migración: 3 booleanos de preferencia de entrega en `Servicio`. | RF-3 |
+| `backend/config/settings.py` | Modificar | Añadir `MEDIA_URL` y `MEDIA_ROOT` para almacenamiento local de fotos. | RF-5 |
+| `backend/config/urls.py` | Modificar | Servir `MEDIA` en desarrollo (`static()`), solo con `DEBUG`. | RF-5 |
 | `backend/servicios/tests/test_solicitudes_publicas.py` | Crear | Tests con `manage.py test` que cubren todos los RF de esta spec. | Todos RF |
 | `frontend/src/services/api.ts` | Crear | Cliente HTTP con `fetch`, base desde `VITE_API_URL`, normalización de errores DRF, timeout. | RNF-3, RNF-6 |
 | `frontend/src/services/solicitudes.ts` | Crear | `crearSolicitud(data, idempotencyKey)` → `POST /api/solicitudes/` (multipart o JSON según fotos). | RF-7.5–7.6 |
@@ -50,7 +53,8 @@ La spec está aprobada. No tiene dudas abiertas relevantes (RF-10.1 queda anotad
    - Cliente: buscar por (correo_norm + tel_norm) o por OR. `get_or_create` sin fusionar solicitudes distintas (mantener independientes). (RF-7.4)
    - Servicio: crear con `tipo_servicio=TipoServicio.PRUEBA`, `estado=EstadoServicio.SOLICITADO`, `descripcion_solicitud`, generar `token_seguimiento = secrets.token_urlsafe(24)`, `codigo` autogenerado en `save()`. (RF-6.1, RF-7.1, RF-9.1)
    - Componentes: crear N. `tipo` obligatorio, `cantidad = 1` por defecto (>=1), `marca/referencia/descripcion` opcionales (descripción opcional permitido). (RF-4.1–RF-4.5)
-   - Fotografías: para cada archivo válido, subir a almacenamiento (Cloudflare) vía helper interno, guardar `Fotografia.url` con URL devuelta. Máx 5, formatos aceptados. (RF-5)
+   - Preferencias de entrega: guardar los 3 booleanos marcados en `Servicio` (entregar en banco, avisar para coordinar, recoger). Opcionales y combinables. (RF-3.3)
+   - Fotografías: para cada archivo válido, guardar en media local con `default_storage.save` y registrar `Fotografia` con `url` = `/media/...`, `tipo=RECEPCION`, `visible_cliente=False`. Máx 5, formatos aceptados. (RF-5)
    - (Opcional) HistorialServicio: estado SOLICITADO, `visible_cliente=False`.
 8. Devolver 201: `{codigo, enlace_seguimiento, servicio_id}` donde `enlace_seguimiento = /seguimiento/<token_seguimiento>`. (RF-9.1–RF-9.3)
 9. UI: botón deshabilitado mientras `isPending` (RF-7.6). Doble clic reutiliza Idempotency-Key → misma respuesta.
@@ -80,17 +84,18 @@ Usar **`web-design`** y **`web-design-guidelines`** para composición, jerarquí
 
 | Decisión | Justificación | Alternativa descartada |
 |---|---|---|
-| **D-1** Fotos: archivos → backend → Cloudflare. Modelo guarda `URLField`. | Coincide con `Fotografia.url` existente y con indicación del usuario (subida de archivos, almacenamiento en Cloudflare, guardar URL). Mantiene stack mínimo (principio 1). | Subida directa frontend a Cloudflare (signed upload): requiere worker/token y configuración adicional. Mayor complejidad para MVP. Descartado. |
+| **D-1** Fotos: archivos → backend → **media local** (`MEDIA_ROOT`). `Fotografia.url` guarda `/media/...`. | Desbloquea RF-5 sin Cloudflare. Coincide con `Fotografia.url` (URLField) y mantiene stack mínimo (principio 1). Cloudflare queda como migración futura sin cambiar el contrato. (Decisión del usuario.) | Cloudflare directo ahora: exige credenciales/bucket no configurados. Descartado por ahora. |
 | **D-2** Idempotencia con header `Idempotency-Key` + `crypto.randomUUID()` en frontend. | Garantiza RF-7.5 ante doble clic, recarga y apertura en otra pestaña. Backend devuelve misma respuesta. | Solo deshabilitar botón: insuficiente para recarga/pestañas distintas. Descartado. |
 | **D-3** Duplicados con OR (correo O teléfono), normalización estricta correo, laxa teléfono. | RF-8.1 lo indica. Teléfono: quitar espacios/guiones/paréntesis/`+` (tratar `+57` opcional). Reduce falsos negativos. | AND: aumenta falsos negativos (teléfono fijo compartido). Descartado. |
 | **D-4** Aviso de duplicados **genérico** (sin código/fecha). | Mitiga riesgo de enumeración (privacidad). Mensaje neutro: "Parece que tienes una solicitud en curso...". | Texto más específico (revelaría existencia/datos): riesgo innecesario. Descartado. |
 | **D-5** Detección de duplicados **server-side** tras validación básica de formato. | Duda 7. Evita búsquedas con datos inválidos. Funciona con otra pestaña. | Predictiva por cambio de campo: carga extra, complejidad. Descartado. |
 | **D-6** Creación con `transaction.atomic()`. | Garantiza atomicidad (cliente+servicio+componentes+fotos) o revierte todo. Evita solicitudes "a medias" ante corte/conexión. (caso límite). | Creación por pasos: riesgo de estado parcial. Descartado. |
 | **D-7** Tipo obligatorio, cantidad `default=1` (>=1), descripción opcional. | Duda 8. Tipo identifica componente. Cantidad coherente. Descripción opcional cumple RF-4.5. | Tipo opcional: solicitudes poco útiles. Descartado. |
-| **D-8** RF-10.1 queda **anotado**, no implementado en esta spec. | Respeta §7 (fuera de alcance interacción del panel). Pertenece a spec del panel administrativo. Evita añadir tiempo real aquí. | Implementar polling/SSE ahora: contradice fuera de alcance, añade complejidad. Descartado. |
-| **D-9** Subida vía backend (multipart) con helper interno a Cloudflare. | Mantiene stack mínimo (principio 1). No añade dependencia nueva. Modelo sigue `URLField`. | SDK Cloudflare en frontend/backend con nueva dependencia: requiere aprobación explícita y config. Descartado para MVP. |
-| **D-10** No modificar esquema innecesariamente. | Principio 2. Solo añadir validación/serializers/vistas/tests. Migración no necesaria ahora. | Añadir campos nuevos prematuramente: riesgo innecesario. Descartado. |
+| **D-8** RF-10.1 **y RF-10.2** quedan **anotados** (spec §9), no implementados en esta spec. | Respeta §7 (fuera de alcance interacción del panel). Pertenecen a la spec del panel administrativo. Evita añadir tiempo real/panel aquí. | Implementar panel/polling/SSE ahora: contradice fuera de alcance, añade complejidad. Descartado. |
+| **D-9** Subida vía backend (multipart) con `default_storage.save` a media local. | Mantiene stack mínimo (principio 1). No añade dependencia nueva ni `ImageField`/Pillow. Modelo sigue `URLField`. | SDK Cloudflare (nueva dependencia/config) o `ImageField` (exigiría Pillow y migración extra): descartados por ahora. |
+| **D-10** Añadir **solo** los campos necesarios: 3 booleanos de preferencia de entrega en `Servicio`. **Migración obligatoria** para RF-3.3. | Principio 2: la spec manda. RF-3.3 exige guardar la preferencia; sin campo no se cumple. No se tocan otras entidades ni relaciones. | No persistir (solo UI): incumple RF-3.3. Descartado. |
 | **D-11** Garantía de unicidad (RF-7.5) **en backend** (Idempotency-Key) + UI deshabilitada. | Principio 3: backend decide. Botón ayuda UX (RF-7.6), backend garantiza integridad (race conditions, recarga, pestañas). | Solo UI: no garantiza servidor. Descartado. |
+| **D-12** Preferencias de entrega como **3 booleanos** en `Servicio` (`entregar_en_banco`, `avisar_para_coordinar`, `recoger`). | Simple, consultable por el panel administrativo y permite marcar varias (RF-3.1). | `JSONField`/texto: menos consultable para el panel. Descartado. |
 
 ## 6. Estrategia de tests
 
@@ -109,7 +114,7 @@ Tests con **`manage.py test`** (principio 4). Crear `backend/servicios/tests/tes
 | `test_requiere_al_menos_un_componente` | Lista vacía → error. | RF-4.2, RF-4.4 |
 | `test_fotos_max_5` | 6 → error. 5 → OK. 0 → OK. | RF-5.1–RF-5.2, RF-5.4 |
 | `test_fotos_formato_invalido` | .txt/.bmp → rechazado. | RF-5.3 |
-| `test_preferencias_opcionales` | Ninguna/múltiples → válidas, se guardan como info. | RF-3.1–RF-3.3 |
+| `test_preferencias_guardadas` | Ninguna/múltiples → válidas; las marcadas quedan persistidas en `Servicio`. | RF-3.1–RF-3.3 |
 | `test_duplicado_requiere_confirmacion` | Existe solicitud EN_REVISION con mismo correo O teléfono → `requiere_confirmacion=true`, no crea. Mensaje genérico. | RF-8.1–RF-8.5 |
 | `test_duplicado_estados_cerrados_no_avisan` | CANCELADO/ENTREGADO/FINALIZADO → no avisa, crea nueva. | RF-8.6 |
 | `test_duplicado_confirmar_crea_nueva` | `confirmar=true` → crea nueva solicitud (independiente). | RF-8.4 |
@@ -131,6 +136,8 @@ Tests con **`manage.py test`** (principio 4). Crear `backend/servicios/tests/tes
 4. Idempotency-Key devuelve la misma respuesta en envíos repetidos.
 5. Formulario usable en móvil 375px, accesible, botón deshabilitado en envío, confirmación con código+enlace+copiar.
 6. `tsc -b` OK, `oxlint` OK, `manage.py check` sin incidencias.
-7. RF-10.1 queda anotado en spec (sin implementar). Todo lo demás de la spec está cubierto.
+7. Migración de preferencias aplicada; las 3 preferencias se persisten en `Servicio` (RF-3.3).
+8. Fotos guardadas en media local y `Fotografia.url` poblada (RF-5).
+9. RF-10.1 y RF-10.2 quedan anotados en spec §9 (sin implementar). Todo lo demás de la spec está cubierto.
 
 **Verificación de aprobación**: Spec `Estado: aprobada`, sin dudas abiertas relevantes. Plan cumple constitución y cubre todos los RF.

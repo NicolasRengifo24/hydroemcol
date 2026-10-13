@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -19,7 +21,6 @@ from .models import (
     MedioAprobacion,
     ResultadoAprobacion,
     Servicio,
-    TipoServicio,
 )
 from .reglas import (
     componentes_no_finalizados,
@@ -264,7 +265,8 @@ class ServicioSerializer(serializers.ModelSerializer):
         model = Servicio
         fields = [
             'id', 'codigo', 'cliente', 'cliente_id', 'tipo_servicio', 'estado',
-            'descripcion_solicitud', 'fecha_solicitud', 'fecha_recepcion',
+            'descripcion_solicitud', 'entregar_en_banco', 'avisar_para_coordinar',
+            'recoger', 'fecha_solicitud', 'fecha_recepcion',
             'fecha_finalizacion', 'fecha_entrega', 'token_seguimiento',
             'observaciones_internas', 'activo', 'resumen_cierre',
         ]
@@ -406,18 +408,62 @@ class ComponenteSolicitudPublicaSerializer(serializers.Serializer):
     tipo = serializers.CharField(max_length=100)
     marca = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
     referencia = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
-    descripcion = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
+    descripcion = serializers.CharField(max_length=500, required=False, allow_blank=True, allow_null=True, default='')
     cantidad = serializers.IntegerField(min_value=1, default=1)
+
+
+# Formatos y topes de las fotografías de la solicitud pública (RF-5).
+# Se validan por extensión y no se inspecciona el contenido: la spec §6 deja
+# fuera de alcance la validación del contenido de la imagen (un archivo con
+# extensión de imagen y contenido dañado es responsabilidad de la empresa
+# descartarlo). No se usa `ImageField` ni Pillow (plan D-9).
+FOTOGRAFIA_FORMATOS = ('jpg', 'jpeg', 'png')
+FOTOGRAFIA_TAMANO_MAX = 10 * 1024 * 1024  # 10 MB por archivo (criterio 4).
+FOTOGRAFIAS_MAX = 5  # RF-5.1 / RF-5.2.
+
+
+class FotografiaSolicitudField(serializers.FileField):
+    """Valida una fotografía de la solicitud pública (RF-5.1, RF-5.3)."""
+
+    def to_internal_value(self, data):
+        archivo = super().to_internal_value(data)
+        extension = Path(archivo.name).suffix.lower().lstrip('.')
+        if extension not in FOTOGRAFIA_FORMATOS:
+            raise serializers.ValidationError(
+                'Formato no admitido: solo se aceptan JPG, JPEG o PNG.'
+            )
+        if archivo.size > FOTOGRAFIA_TAMANO_MAX:
+            raise serializers.ValidationError(
+                'La fotografía supera el límite de 10 MB por archivo.'
+            )
+        return archivo
 
 
 class SolicitudPublicaSerializer(serializers.Serializer):
     nombre_cliente = serializers.CharField(max_length=150)
+    empresa = serializers.CharField(max_length=200, required=False, allow_blank=True, default='')
     correo_electronico = serializers.EmailField(max_length=254)
-    telefono = serializers.CharField(max_length=50)
-    tipo_servicio = serializers.ChoiceField(choices=TipoServicio.choices)
-    descripcion_problema = serializers.CharField()
+    telefono = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')
+    whatsapp = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')
+    descripcion_problema = serializers.CharField(max_length=500)
+    entregar_en_banco = serializers.BooleanField(required=False, default=False)
+    avisar_para_coordinar = serializers.BooleanField(required=False, default=False)
+    recoger = serializers.BooleanField(required=False, default=False)
     componentes = ComponenteSolicitudPublicaSerializer(many=True, allow_empty=False)
+    fotografias = serializers.ListField(
+        child=FotografiaSolicitudField(),
+        required=False,
+        allow_empty=True,
+        max_length=FOTOGRAFIAS_MAX,
+        default=list,
+        error_messages={
+            'max_length': (
+                'Puedes adjuntar como máximo 5 fotografías por solicitud.'
+            ),
+        },
+    )
     idempotency_key = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    confirmar = serializers.BooleanField(required=False, default=False)
 
     def validate_correo_electronico(self, value):
         from . import validators
@@ -425,26 +471,16 @@ class SolicitudPublicaSerializer(serializers.Serializer):
 
     def validate_telefono(self, value):
         from . import validators
-        return validators.normalizar_telefono(value)
+        return validators.normalizar_telefono(value) if value else ''
+
+    def validate_whatsapp(self, value):
+        from . import validators
+        return validators.normalizar_telefono(value) if value else ''
 
     def validate(self, attrs):
-        from . import reglas
-        from django.db.models import Q
+        if not attrs.get('telefono') and not attrs.get('whatsapp'):
+            raise serializers.ValidationError({
+                'telefono': ['Indica un teléfono o un WhatsApp para poder contactarte.'],
+            })
 
-        correo_norm = attrs.get('correo_electronico')
-        telefono_norm = attrs.get('telefono')
-
-        q = Q()
-        if correo_norm:
-            q |= Q(cliente__email=correo_norm)
-        if telefono_norm:
-            q |= Q(cliente__telefono=telefono_norm)
-
-        if q:
-            estados_cerrados = reglas.estados_cerrados()
-            existe = Servicio.objects.filter(q).exclude(estado__in=estados_cerrados).exists()
-            if existe:
-                raise serializers.ValidationError({
-                    'non_field_errors': ['Parece que tienes una solicitud en curso. ¿Quieres continuar con ella o crear una nueva solicitud?']
-                })
         return attrs

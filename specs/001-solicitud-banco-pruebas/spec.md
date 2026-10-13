@@ -253,4 +253,4 @@ La funcionalidad está completa cuando:
 
 ## 9. Dudas abiertas
 
-- [ANOTACIÓN] El requisito RF-10.1 ("sin tener que recargar la página") queda anotado para tenerlo en cuenta cuando se elabore la spec del panel administrativo; no forma parte de esta versión.
+- [ANOTACIÓN] Los requisitos RF-10.1 ("sin tener que recargar la página") y RF-10.2 (la solicitud sigue esperando si el administrativo no mira el panel) quedan anotados para tenerlos en cuenta cuando se elabore la spec del panel administrativo; no forman parte de esta versión.

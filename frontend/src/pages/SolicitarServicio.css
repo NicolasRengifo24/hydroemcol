@@ -73,7 +73,8 @@
 }
 
 .solicitud-form .solicitud-input[aria-invalid='true'],
-.solicitud-form textarea[aria-invalid='true'] {
+.solicitud-form textarea[aria-invalid='true'],
+.solicitud-form .solicitud-file-input[aria-invalid='true'] {
   border-color: var(--solicitud-error);
 }
 
@@ -81,6 +82,40 @@
   margin: 0;
   font-size: 0.875rem;
   color: var(--solicitud-error);
+}
+
+.solicitud-form .solicitud-ayuda {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.solicitud-form fieldset > .solicitud-ayuda {
+  margin-bottom: 0.85rem;
+}
+
+.solicitud-form .solicitud-contador {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+/* ---------- Checkboxes ---------- */
+
+.solicitud-form .solicitud-check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0;
+  cursor: pointer;
+}
+
+.solicitud-form .solicitud-check input[type='checkbox'] {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+  accent-color: var(--color-primary);
 }
 
 .solicitud-form .solicitud-input:focus-visible,
@@ -193,16 +228,84 @@
   width: 100%;
 }
 
-/* ---------- Nota ---------- */
+/* ---------- Fotografías ---------- */
 
-.solicitud-nota {
+.solicitud-form .solicitud-file-input {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
   border: 1px dashed var(--color-border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--color-bg-alt);
-  color: var(--color-text-muted);
+  color: var(--color-text);
+  font-family: inherit;
   font-size: 0.95rem;
-  padding: 0.9rem 1.1rem;
-  margin-bottom: 1.25rem;
+  cursor: pointer;
+}
+
+.solicitud-form .solicitud-file-input::file-selector-button {
+  margin-right: 0.75rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--color-primary);
+  border-radius: 6px;
+  background: var(--color-white);
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.solicitud-form .solicitud-file-input::file-selector-button:hover {
+  background: var(--color-bg-alt);
+}
+
+.solicitud-form .solicitud-file-input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.solicitud-form .solicitud-fotos {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.solicitud-form .solicitud-foto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--color-white);
+}
+
+.solicitud-form .solicitud-foto-img {
+  display: block;
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  background: var(--color-bg-alt);
+}
+
+.solicitud-form .solicitud-foto-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.4rem 0.55rem;
+}
+
+.solicitud-form .solicitud-foto-nombre {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
 }
 
 /* ---------- Paneles ---------- */

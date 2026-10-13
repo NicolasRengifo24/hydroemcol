@@ -14,6 +14,7 @@ from .acciones import (
     iniciar_trabajo,
     registrar_respuesta,
 )
+from .almacenamiento import guardar_fotografias
 from .models import (
     AprobacionServicio,
     Cliente,
@@ -25,6 +26,7 @@ from .models import (
     HistorialServicio,
     MedioAprobacion,
     Servicio,
+    TipoServicio,
 )
 from .serializers import (
     AprobacionCreateSerializer,
@@ -378,12 +380,51 @@ class SeguimientoAprobarView(APIView):
 class SolicitudPublicaCreateView(APIView):
     permission_classes = [AllowAny]
 
+    def _respuesta(self, servicio):
+        return {
+            'codigo': servicio.codigo,
+            'enlace_seguimiento': f'/seguimiento/{servicio.token_seguimiento}',
+            'servicio_id': servicio.id,
+        }
+
     def post(self, request):
         serializer = SolicitudPublicaSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         data = serializer.validated_data
+
+        clave = (
+            data.get('idempotency_key')
+            or request.headers.get('Idempotency-Key')
+            or ''
+        ).strip()
+
+        if clave:
+            existente = Servicio.objects.filter(idempotency_key=clave).first()
+            if existente is not None:
+                return Response(self._respuesta(existente), status=status.HTTP_200_OK)
+
+        if not data.get('confirmar'):
+            from . import reglas
+
+            if reglas.tiene_solicitud_en_curso(
+                None,
+                correo_norm=data.get('correo_electronico'),
+                telefono_norm=data.get('telefono'),
+                whatsapp_norm=data.get('whatsapp'),
+            ):
+                return Response(
+                    {
+                        'requiere_confirmacion': True,
+                        'detail': (
+                            'Parece que ya tienes una solicitud en curso. '
+                            '¿Quieres continuar o crear una nueva?'
+                        ),
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+
         from django.db import transaction
 
         with transaction.atomic():
@@ -391,13 +432,19 @@ class SolicitudPublicaCreateView(APIView):
                 email=data['correo_electronico'].strip().lower(),
                 defaults={
                     'nombre': data['nombre_cliente'].strip(),
-                    'telefono': data['telefono'].strip(),
+                    'empresa': data.get('empresa', '').strip(),
+                    'telefono': data.get('telefono', '').strip(),
+                    'whatsapp': data.get('whatsapp', '').strip(),
                 },
             )
             servicio = Servicio.objects.create(
                 cliente=cliente,
-                tipo_servicio=data['tipo_servicio'],
+                tipo_servicio=TipoServicio.PRUEBA,
                 descripcion_solicitud=data['descripcion_problema'],
+                entregar_en_banco=data.get('entregar_en_banco', False),
+                avisar_para_coordinar=data.get('avisar_para_coordinar', False),
+                recoger=data.get('recoger', False),
+                idempotency_key=clave,
             )
             for comp in data.get('componentes', []):
                 Componente.objects.create(
@@ -408,11 +455,8 @@ class SolicitudPublicaCreateView(APIView):
                     descripcion=comp.get('descripcion') or '',
                     cantidad=comp.get('cantidad', 1),
                 )
+            # Las fotografías las guarda un helper separado para poder cambiar
+            # el almacenamiento (Cloudflare) sin tocar la vista (plan D-1/D-9).
+            guardar_fotografias(servicio, data.get('fotografias'))
 
-        return Response(
-            {
-                'codigo': servicio.codigo,
-                'enlace_seguimiento': f'/seguimiento/{servicio.token_seguimiento}',
-            },
-            status=status.HTTP_201_CREATED,
-        )
+        return Response(self._respuesta(servicio), status=status.HTTP_201_CREATED)

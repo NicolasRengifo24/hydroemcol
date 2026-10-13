@@ -140,6 +140,13 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 
+# Archivos subidos por los usuarios (fotografías de la solicitud pública).
+# Almacenamiento local en desarrollo; la migración futura a Cloudflare solo
+# cambia el helper `servicios.almacenamiento` (plan D-1 / D-9).
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+
 # CORS: permite que el frontend React (Vite en http://localhost:5173)
 # consuma la API. En producción se ajusta al dominio real del frontend.
 CORS_ALLOWED_ORIGINS = [

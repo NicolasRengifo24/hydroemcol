@@ -1,4 +1,4 @@
-Ã¯Â»Â¿"""Tests de las funciones puras de decisiÃƒÆ’Ã‚Â³n de `reglas.py`.
+"""Tests de las funciones puras de decisiÃ³n de `reglas.py`.
 
 
 
@@ -6,15 +6,15 @@
 
 
 
-Cada test corresponde a un requisito o a un caso lÃƒÆ’Ã‚Â­mite de la
+Cada test corresponde a un requisito o a un caso lÃ­mite de la
 
 
 
-especificaciÃƒÆ’Ã‚Â³n 002. Son funciones puras: reciben el estado actual (`hoy`) y
+especificaciÃ³n 002. Son funciones puras: reciben el estado actual (`hoy`) y
 
 
 
-devuelven una decisiÃƒÆ’Ã‚Â³n, sin tocar la base de datos ni la hora del sistema.
+devuelven una decisiÃ³n, sin tocar la base de datos ni la hora del sistema.
 
 
 
@@ -22,7 +22,7 @@ devuelven una decisiÃƒÆ’Ã‚Â³n, sin tocar la base de datos ni la hora d
 
 
 
-T2 cubre `tiene_trabajo_iniciado` y `puede_continuar`. Las demÃƒÆ’Ã‚Â¡s reglas se
+T2 cubre `tiene_trabajo_iniciado` y `puede_continuar`. Las demÃ¡s reglas se
 
 
 
@@ -102,7 +102,7 @@ def componente(id=1, estado=EstadoComponente.PENDIENTE, trabajo_iniciado=False):
 
 
 
-    """Construye un componente mÃƒÆ’Ã‚Â­nimo para las pruebas."""
+    """Construye un componente mÃ­nimo para las pruebas."""
 
 
 
@@ -138,7 +138,7 @@ def cotizacion(es_bloqueante, estado, id=1):
 
 
 
-    """Construye una cotizaciÃƒÆ’Ã‚Â³n mÃƒÆ’Ã‚Â­nima para las pruebas."""
+    """Construye una cotizaciÃ³n mÃ­nima para las pruebas."""
 
 
 
@@ -186,7 +186,7 @@ def hoy(componentes=None, cotizaciones_por_componente=None):
 
 
 
-    leerÃƒÆ’Ã‚Â¡n las vistas y los serializers. `cotizaciones` es la misma lista en
+    leerÃ¡n las vistas y los serializers. `cotizaciones` es la misma lista en
 
 
 
@@ -318,7 +318,7 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        """RF-COT-04: se estÃƒÆ’Ã‚Â¡ esperando al cliente."""
+        """RF-COT-04: se estÃ¡ esperando al cliente."""
 
 
 
@@ -346,7 +346,7 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        """RF-COT-05: el cliente no aprobÃƒÆ’Ã‚Â³ lo que cuesta."""
+        """RF-COT-05: el cliente no aprobÃ³ lo que cuesta."""
 
 
 
@@ -558,7 +558,7 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        """RF-COT-07: basta una bloqueante que no estÃƒÆ’Ã‚Â© aprobada."""
+        """RF-COT-07: basta una bloqueante que no estÃ© aprobada."""
 
 
 
@@ -654,11 +654,11 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        El estado `rechazado_bloqueante` siempre viene acompaÃƒÆ’Ã‚Â±ado de la
+        El estado `rechazado_bloqueante` siempre viene acompaÃ±ado de la
 
 
 
-        cotizaciÃƒÆ’Ã‚Â³n bloqueante en estado `rechazada`, que es la que sigue
+        cotizaciÃ³n bloqueante en estado `rechazada`, que es la que sigue
 
 
 
@@ -718,7 +718,7 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        """RF-COT-05: la condiciÃƒÆ’Ã‚Â³n deja de aplicar si el rechazo se revierte."""
+        """RF-COT-05: la condiciÃ³n deja de aplicar si el rechazo se revierte."""
 
 
 
@@ -814,7 +814,7 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        """CL-01: bloqueante, no bloqueante y sin cotizaciÃƒÆ’Ã‚Â³n conviven."""
+        """CL-01: bloqueante, no bloqueante y sin cotizaciÃ³n conviven."""
 
 
 
@@ -890,7 +890,7 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        """CL-04: los que pueden avanzar continÃƒÆ’Ã‚Âºan y el servicio sigue abierto."""
+        """CL-04: los que pueden avanzar continÃºan y el servicio sigue abierto."""
 
 
 
@@ -1002,7 +1002,7 @@ class TestEstadoPorRechazoBloqueante(SimpleTestCase):
 
 
 
-        """Una cotizaciÃƒÆ’Ã‚Â³n pendiente no fija estado: el componente sigue PENDIENTE."""
+        """Una cotizaciÃ³n pendiente no fija estado: el componente sigue PENDIENTE."""
 
 
 
@@ -1218,7 +1218,7 @@ class TestMotivoBloqueo(SimpleTestCase):
 
 
 
-    """RF-COT-04 y RF-COT-05: el sistema explica por quÃƒÆ’Ã‚Â© el componente estÃƒÆ’Ã‚Â¡ detenido."""
+    """RF-COT-04 y RF-COT-05: el sistema explica por quÃ© el componente estÃ¡ detenido."""
 
 
 
@@ -1290,7 +1290,7 @@ class TestMotivoBloqueo(SimpleTestCase):
 
 
 
-        self.assertIn('cotizaciÃƒÆ’Ã‚Â³n', motivo.lower())
+        self.assertIn('pendiente', motivo.lower())
 
 
 
@@ -1410,7 +1410,7 @@ class TestComponentesNoFinalizados(SimpleTestCase):
 
 
 
-    """Criterio ÃƒÆ’Ã‚Âºnico del glosario 4.8: servicio abierto con componentes sin cerrar."""
+    """Criterio Ãºnico del glosario 4.8: servicio abierto con componentes sin cerrar."""
 
 
 
@@ -1858,11 +1858,11 @@ class TestPuedeFinalizarServicio(SimpleTestCase):
 
 
 
-    Criterio ÃƒÆ’Ã‚Âºnico de habilitaciÃƒÆ’Ã‚Â³n: todos los componentes finalizados. El
+    Criterio Ãºnico de habilitaciÃ³n: todos los componentes finalizados. El
 
 
 
-    caso 2 de RF-COT-11 es el motivo del cierre, no una condiciÃƒÆ’Ã‚Â³n aparte.
+    caso 2 de RF-COT-11 es el motivo del cierre, no una condiciÃ³n aparte.
 
 
 
@@ -1946,7 +1946,7 @@ class TestPuedeFinalizarServicio(SimpleTestCase):
 
 
 
-        """RF-COT-12: una pendiente no habilita el cierre por sÃƒÆ’Ã‚Â­ sola.
+        """RF-COT-12: una pendiente no habilita el cierre por sÃ­ sola.
 
 
 
@@ -1954,7 +1954,7 @@ class TestPuedeFinalizarServicio(SimpleTestCase):
 
 
 
-        El componente con la cotizaciÃƒÆ’Ã‚Â³n pendiente sigue sin finalizar, asÃƒÆ’Ã‚Â­ que
+        El componente con la cotizaciÃ³n pendiente sigue sin finalizar, asÃ­ que
 
 
 
@@ -1962,7 +1962,7 @@ class TestPuedeFinalizarServicio(SimpleTestCase):
 
 
 
-        componente, no la pendiente en sÃƒÆ’Ã‚Â­.
+        componente, no la pendiente en sÃ­.
 
 
 
@@ -2134,7 +2134,7 @@ class TestPuedeFinalizarServicio(SimpleTestCase):
 
 
 
-        """CL-03 no bloquea el cierre si el componente ya se cerrÃƒÆ’Ã‚Â³."""
+        """CL-03 no bloquea el cierre si el componente ya se cerrÃ³."""
 
 
 
@@ -2186,7 +2186,7 @@ class TestPuedeFinalizarServicio(SimpleTestCase):
 
 
 
-        """CL-03: hay trabajo y ademÃƒÆ’Ã‚Â¡s falta cerrar ese componente."""
+        """CL-03: hay trabajo y ademÃ¡s falta cerrar ese componente."""
 
 
 
@@ -2342,7 +2342,7 @@ class TestResumenCierre(SimpleTestCase):
 
 
 
-    """El resumen es lo que ve el administrativo: habilitaciÃƒÆ’Ã‚Â³n mÃƒÆ’Ã‚Â¡s motivo."""
+    """El resumen es lo que ve el administrativo: habilitaciÃ³n mÃ¡s motivo."""
 
 
 

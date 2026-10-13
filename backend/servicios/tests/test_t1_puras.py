@@ -25,10 +25,8 @@ class T1ReglasTest(SimpleTestCase):
         self.assertIn(EstadoServicio.ENTREGADO, cerrados)
         self.assertIn(EstadoServicio.CANCELADO, cerrados)
 
-    def test_tiene_solicitud_en_curso_es_pura_y_boolean(self):
+    def test_tiene_solicitud_en_curso_sin_datos_no_consulta_bd(self):
         hoy = {'componentes': []}
-        r1 = reglas.tiene_solicitud_en_curso(hoy, correo_norm='a@b.com', telefono_norm='3001234567')
-        r2 = reglas.tiene_solicitud_en_curso(hoy, correo_norm='a@b.com', telefono_norm='3001234567')
-        self.assertIsInstance(r1, bool)
-        self.assertEqual(r1, r2)
-        self.assertIsInstance(reglas.tiene_solicitud_en_curso(hoy), bool)
+        resultado = reglas.tiene_solicitud_en_curso(hoy)
+        self.assertIsInstance(resultado, bool)
+        self.assertFalse(resultado)

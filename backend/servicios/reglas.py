@@ -234,16 +234,33 @@ def estados_cerrados():
     )
 
 
-def tiene_solicitud_en_curso(hoy, *, correo_norm=None, telefono_norm=None):
+def tiene_solicitud_en_curso(hoy, *, correo_norm=None, telefono_norm=None, whatsapp_norm=None):
     """Indica si existe alguna solicitud en curso segÃºn correo o telÃ©fono.
 
-    Esta funciÃ³n estÃ¡ pensada para usar con parÃ¡metros normalizados (validators).
-    `hoy` no se usa para la lÃ³gica (se mantiene por compatibilidad con patrÃ³n del mÃ³dulo),
-    pero se acepta para futuras extensiones.
+    Consulta los servicios que no estÃ¡n en `estados_cerrados()` y comparte con
+    ellos el correo, el telÃ©fono o el WhatsApp normalizados (OR). Es la fuente
+    Ãºnica que usa la vista pÃºblica para decidir si debe avisar de un posible
+    duplicado (RF-8.1). `hoy` no se usa; se mantiene por el patrÃ³n del mÃ³dulo.
     """
-    # LÃ³gica delegada al caller (consulta a BD). Esta funciÃ³n pura actÃºa como helper
-    # para mantener consistencia de estados cerrados.
-    return False
+    from django.db.models import Q
+
+    from servicios.models import Servicio
+
+    q = Q()
+    if correo_norm:
+        q |= Q(cliente__email=correo_norm)
+    if telefono_norm:
+        q |= Q(cliente__telefono=telefono_norm)
+    if whatsapp_norm:
+        q |= Q(cliente__whatsapp=whatsapp_norm)
+    if not q:
+        return False
+
+    return (
+        Servicio.objects.filter(q)
+        .exclude(estado__in=estados_cerrados())
+        .exists()
+    )
 
 
 

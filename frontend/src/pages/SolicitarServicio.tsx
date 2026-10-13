@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCrearSolicitud } from '../hooks/useCrearSolicitud'
 import type { SolicitudPublicaPayload } from '../services/solicitudes'
@@ -12,20 +12,28 @@ interface ComponenteForm {
   cantidad: number
 }
 
+interface FotoForm {
+  id: string
+  archivo: File
+  url: string
+}
+
 interface RespuestaExitosa {
   codigo: string
   enlace: string
 }
 
-const opcionesServicio: ReadonlyArray<{ valor: string; etiqueta: string }> = [
-  { valor: 'DIAGNOSTICO', etiqueta: 'Diagnóstico' },
-  { valor: 'REPARACION', etiqueta: 'Reparación' },
-  { valor: 'MANTENIMIENTO', etiqueta: 'Mantenimiento' },
-  { valor: 'PRUEBA', etiqueta: 'Prueba' },
-  { valor: 'OTRO', etiqueta: 'Otro' },
-]
+const CAMPOS_FORM = ['nombre_cliente', 'empresa', 'correo_electronico', 'telefono', 'whatsapp', 'descripcion_problema']
 
-const CAMPOS_FORM = ['nombre_cliente', 'correo_electronico', 'telefono', 'tipo_servicio', 'descripcion_problema']
+// Fotografías (RF-5): hasta 5 por solicitud, en JPG/JPEG/PNG, 10 MB cada una.
+const FOTOS_MAX = 5
+const FOTO_TAMANO_MAX = 10 * 1024 * 1024
+const FOTO_FORMATOS = ['jpg', 'jpeg', 'png']
+
+function extensionDe(nombre: string): string {
+  const punto = nombre.lastIndexOf('.')
+  return punto >= 0 ? nombre.slice(punto + 1).toLowerCase() : ''
+}
 
 function componenteVacio(): ComponenteForm {
   return { tipo: '', marca: '', referencia: '', descripcion: '', cantidad: 1 }
@@ -35,13 +43,13 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null
 }
 
-function esDuplicado(data: unknown): string | null {
-  if (!isRecord(data) || !Array.isArray(data.non_field_errors)) return null
-  const primero = data.non_field_errors.find((v) => typeof v === 'string')
-  if (typeof primero === 'string' && primero.toLowerCase().includes('solicitud en curso')) {
-    return primero
-  }
-  return null
+function avisoDuplicado(err: unknown): string | null {
+  if (!isRecord(err) || err.status !== 409 || !isRecord(err.data)) return null
+  if (err.data.requiere_confirmacion !== true) return null
+  const detalle = err.data.detail
+  return typeof detalle === 'string' && detalle
+    ? detalle
+    : 'Parece que ya tienes una solicitud en curso.'
 }
 
 function parsearErrores(err: unknown): { general: string | null; campos: Record<string, string> } {
@@ -81,17 +89,36 @@ function SolicitarServicio() {
   const { crear, isLoading, reset } = useCrearSolicitud()
   const [form, setForm] = useState({
     nombre_cliente: '',
+    empresa: '',
     correo_electronico: '',
     telefono: '',
-    tipo_servicio: 'DIAGNOSTICO',
+    whatsapp: '',
     descripcion_problema: '',
   })
   const [componentes, setComponentes] = useState<ComponenteForm[]>([componenteVacio()])
+  const [fotos, setFotos] = useState<FotoForm[]>([])
+  const [errorFotos, setErrorFotos] = useState<string | null>(null)
+  const [preferencias, setPreferencias] = useState({
+    entregar_en_banco: false,
+    avisar_para_coordinar: false,
+    recoger: false,
+  })
   const [exito, setExito] = useState<RespuestaExitosa | null>(null)
   const [duplicado, setDuplicado] = useState<string | null>(null)
   const [errorCampos, setErrorCampos] = useState<Record<string, string>>({})
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null)
   const [copiado, setCopiado] = useState(false)
+
+  const fotoIdRef = useRef(0)
+  const objectUrlsRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    const urls = objectUrlsRef.current
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url))
+      urls.clear()
+    }
+  }, [])
 
   function actualizarCampo(campo: keyof typeof form, valor: string) {
     setForm((prev) => ({ ...prev, [campo]: valor }))
@@ -109,6 +136,68 @@ function SolicitarServicio() {
     setComponentes((prev) => prev.filter((_, i) => i !== idx))
   }
 
+  function onFotosChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const seleccionados = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (seleccionados.length === 0) return
+
+    const nuevas: FotoForm[] = []
+    let total = fotos.length
+    let formatoInvalido = 0
+    let tamanoExcedido = 0
+    let excedidas = 0
+
+    for (const archivo of seleccionados) {
+      if (!FOTO_FORMATOS.includes(extensionDe(archivo.name))) {
+        formatoInvalido += 1
+        continue
+      }
+      if (archivo.size > FOTO_TAMANO_MAX) {
+        tamanoExcedido += 1
+        continue
+      }
+      if (total >= FOTOS_MAX) {
+        excedidas += 1
+        continue
+      }
+      const url = URL.createObjectURL(archivo)
+      objectUrlsRef.current.add(url)
+      fotoIdRef.current += 1
+      nuevas.push({ id: `foto-${fotoIdRef.current}`, archivo, url })
+      total += 1
+    }
+
+    if (nuevas.length > 0) {
+      setFotos((prev) => [...prev, ...nuevas])
+    }
+
+    const avisos: string[] = []
+    if (formatoInvalido > 0) {
+      avisos.push('Solo se aceptan fotografías en formato JPG, JPEG o PNG.')
+    }
+    if (tamanoExcedido > 0) {
+      avisos.push('Cada fotografía debe pesar como máximo 10 MB.')
+    }
+    if (excedidas > 0) {
+      avisos.push(`Máximo ${FOTOS_MAX} fotografías por solicitud.`)
+    }
+    setErrorFotos(avisos.length > 0 ? avisos.join(' ') : null)
+  }
+
+  function quitarFoto(id: string) {
+    const foto = fotos.find((f) => f.id === id)
+    if (foto) {
+      URL.revokeObjectURL(foto.url)
+      objectUrlsRef.current.delete(foto.url)
+    }
+    setFotos((prev) => prev.filter((f) => f.id !== id))
+    setErrorFotos(null)
+  }
+
+  function alternarPreferencia(campo: keyof typeof preferencias) {
+    setPreferencias((prev) => ({ ...prev, [campo]: !prev[campo] }))
+  }
+
   function limpiarErrores() {
     setDuplicado(null)
     setErrorCampos({})
@@ -116,17 +205,20 @@ function SolicitarServicio() {
     setCopiado(false)
   }
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function enviar(confirmar: boolean) {
     setExito(null)
     limpiarErrores()
 
     const payload: SolicitudPublicaPayload = {
       nombre_cliente: form.nombre_cliente,
+      empresa: form.empresa.trim() || undefined,
       correo_electronico: form.correo_electronico,
-      telefono: form.telefono,
-      tipo_servicio: form.tipo_servicio,
+      telefono: form.telefono.trim() || undefined,
+      whatsapp: form.whatsapp.trim() || undefined,
       descripcion_problema: form.descripcion_problema,
+      entregar_en_banco: preferencias.entregar_en_banco,
+      avisar_para_coordinar: preferencias.avisar_para_coordinar,
+      recoger: preferencias.recoger,
       componentes: componentes
         .filter((c) => c.tipo.trim() !== '')
         .map((c) => ({
@@ -136,16 +228,17 @@ function SolicitarServicio() {
           descripcion: c.descripcion || undefined,
           cantidad: c.cantidad >= 1 ? c.cantidad : 1,
         })),
+      fotografias: fotos.map((f) => f.archivo),
+      confirmar,
     }
 
     try {
       const res = await crear(payload)
       setExito({ codigo: res.codigo, enlace: res.enlace_seguimiento })
     } catch (err) {
-      const data = isRecord(err) ? err.data : null
-      const mensajeDuplicado = esDuplicado(data)
-      if (mensajeDuplicado) {
-        setDuplicado(mensajeDuplicado)
+      const aviso = avisoDuplicado(err)
+      if (aviso) {
+        setDuplicado(aviso)
         return
       }
       const { general, campos } = parsearErrores(err)
@@ -154,15 +247,26 @@ function SolicitarServicio() {
     }
   }
 
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    void enviar(false)
+  }
+
   function resetearFormulario() {
+    objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
+    objectUrlsRef.current.clear()
     setForm({
       nombre_cliente: '',
+      empresa: '',
       correo_electronico: '',
       telefono: '',
-      tipo_servicio: 'DIAGNOSTICO',
+      whatsapp: '',
       descripcion_problema: '',
     })
     setComponentes([componenteVacio()])
+    setFotos([])
+    setErrorFotos(null)
+    setPreferencias({ entregar_en_banco: false, avisar_para_coordinar: false, recoger: false })
     setExito(null)
     limpiarErrores()
     reset()
@@ -182,16 +286,18 @@ function SolicitarServicio() {
     <section className="page solicitud-page" aria-label="Solicitar servicio técnico">
       <h1>Solicitar servicio</h1>
       <p className="solicitud-intro">
-        Cuéntanos qué equipo, repuesto o sistema necesita atención. Un asesor de HidroEmcol revisará tu
-        solicitud y te contactará por el correo o teléfono indicado.
+        No necesitas crear una cuenta para solicitar el servicio. Cuéntanos qué equipo, repuesto o sistema
+        necesita atención y un asesor de HidroEmcol se pondrá en contacto contigo por el correo o el teléfono
+        que indiques para continuar el proceso.
       </p>
 
       {exito && (
         <div className="solicitud-panel solicitud-panel-success" role="status" aria-live="polite">
           <p className="solicitud-panel-title">Solicitud creada</p>
           <p>
-            Tu solicitud se registró con el código <strong>{exito.codigo}</strong>. Guarda este código y el
-            siguiente enlace para consultar el estado de tu servicio cuando quieras.
+            Tu solicitud se registró con el código <strong>{exito.codigo}</strong>. El enlace de seguimiento
+            da acceso únicamente a esta solicitud y es tu forma de consultar el avance. Guárdalo, junto con el
+            código, para volver cuando quieras.
           </p>
           <p className="solicitud-panel-actions">
             <Link to={exito.enlace} className="solicitud-btn solicitud-btn-primary">
@@ -211,14 +317,24 @@ function SolicitarServicio() {
 
       {duplicado && (
         <div className="solicitud-panel solicitud-panel-warning" role="alert">
-          <p className="solicitud-panel-title">Ya tienes una solicitud en curso</p>
-          <p>
-            Hay una solicitud activa asociada a tu correo o teléfono y no se permite registrar otra hasta que
-            se cierre. Contáctanos por teléfono o correo para reanudarla o darla por finalizada.
-          </p>
+          <p className="solicitud-panel-title">Posible solicitud duplicada</p>
+          <p>{duplicado}</p>
           <p className="solicitud-panel-actions">
-            <button type="button" className="solicitud-btn solicitud-btn-secondary" onClick={() => setDuplicado(null)}>
-              Entendido
+            <button
+              type="button"
+              className="solicitud-btn solicitud-btn-primary"
+              onClick={() => void enviar(true)}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Enviando…' : 'Continuar'}
+            </button>
+            <button
+              type="button"
+              className="solicitud-btn solicitud-btn-secondary"
+              onClick={() => setDuplicado(null)}
+              disabled={isLoading}
+            >
+              Cancelar
             </button>
           </p>
         </div>
@@ -264,6 +380,21 @@ function SolicitarServicio() {
               </div>
 
               <div className="solicitud-campo">
+                <label className="solicitud-campo-label" htmlFor="f-empresa">
+                  Empresa
+                </label>
+                <input
+                  id="f-empresa"
+                  className="solicitud-input"
+                  type="text"
+                  autoComplete="organization"
+                  maxLength={200}
+                  value={form.empresa}
+                  onChange={(e) => actualizarCampo('empresa', e.target.value)}
+                />
+              </div>
+
+              <div className="solicitud-campo">
                 <label className="solicitud-campo-label" htmlFor="f-correo">
                   Correo electrónico <span aria-hidden="true">*</span>
                 </label>
@@ -289,7 +420,7 @@ function SolicitarServicio() {
 
               <div className="solicitud-campo">
                 <label className="solicitud-campo-label" htmlFor="f-telefono">
-                  Teléfono <span aria-hidden="true">*</span>
+                  Teléfono
                 </label>
                 <input
                   id="f-telefono"
@@ -298,9 +429,8 @@ function SolicitarServicio() {
                   autoComplete="tel"
                   inputMode="tel"
                   maxLength={50}
-                  required
                   aria-invalid={errorCampos.telefono ? 'true' : undefined}
-                  aria-describedby={errorCampos.telefono ? 'f-telefono-error' : undefined}
+                  aria-describedby={errorCampos.telefono ? 'f-telefono-error' : 'f-contacto-ayuda'}
                   value={form.telefono}
                   onChange={(e) => actualizarCampo('telefono', e.target.value)}
                 />
@@ -310,30 +440,38 @@ function SolicitarServicio() {
                   </p>
                 )}
               </div>
+
+              <div className="solicitud-campo">
+                <label className="solicitud-campo-label" htmlFor="f-whatsapp">
+                  WhatsApp
+                </label>
+                <input
+                  id="f-whatsapp"
+                  className="solicitud-input"
+                  type="tel"
+                  inputMode="tel"
+                  maxLength={50}
+                  aria-invalid={errorCampos.whatsapp ? 'true' : undefined}
+                  aria-describedby={errorCampos.whatsapp ? 'f-whatsapp-error' : 'f-contacto-ayuda'}
+                  value={form.whatsapp}
+                  onChange={(e) => actualizarCampo('whatsapp', e.target.value)}
+                />
+                {errorCampos.whatsapp && (
+                  <p id="f-whatsapp-error" className="solicitud-error-campo">
+                    {errorCampos.whatsapp}
+                  </p>
+                )}
+              </div>
+
+              <p id="f-contacto-ayuda" className="solicitud-ayuda solicitud-grid-full">
+                Indica al menos un teléfono o un WhatsApp para que podamos contactarte.
+              </p>
             </div>
           </fieldset>
 
           <fieldset>
             <legend>Servicio</legend>
             <div className="solicitud-grid">
-              <div className="solicitud-campo solicitud-grid-full">
-                <label className="solicitud-campo-label" htmlFor="f-tipo">
-                  Tipo de servicio <span aria-hidden="true">*</span>
-                </label>
-                <select
-                  id="f-tipo"
-                  name="tipo_servicio"
-                  value={form.tipo_servicio}
-                  onChange={(e) => actualizarCampo('tipo_servicio', e.target.value)}
-                >
-                  {opcionesServicio.map((opcion) => (
-                    <option key={opcion.valor} value={opcion.valor}>
-                      {opcion.etiqueta}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div className="solicitud-campo solicitud-grid-full">
                 <label className="solicitud-campo-label" htmlFor="f-descripcion">
                   Descripción del problema <span aria-hidden="true">*</span>
@@ -342,12 +480,20 @@ function SolicitarServicio() {
                   id="f-descripcion"
                   name="descripcion_problema"
                   rows={4}
+                  maxLength={500}
                   required
                   aria-invalid={errorCampos.descripcion_problema ? 'true' : undefined}
-                  aria-describedby={errorCampos.descripcion_problema ? 'f-descripcion-error' : undefined}
+                  aria-describedby={
+                    errorCampos.descripcion_problema
+                      ? 'f-descripcion-error f-descripcion-contador'
+                      : 'f-descripcion-contador'
+                  }
                   value={form.descripcion_problema}
                   onChange={(e) => actualizarCampo('descripcion_problema', e.target.value)}
                 />
+                <p id="f-descripcion-contador" className="solicitud-contador">
+                  {form.descripcion_problema.length}/500
+                </p>
                 {errorCampos.descripcion_problema && (
                   <p id="f-descripcion-error" className="solicitud-error-campo">
                     {errorCampos.descripcion_problema}
@@ -359,12 +505,21 @@ function SolicitarServicio() {
 
           <fieldset>
             <legend>Componentes</legend>
+            <p className="solicitud-ayuda">
+              Agrega un componente por equipo que quieras probar. Puedes quitar cualquiera de ellos
+              mientras quede al menos uno.
+            </p>
             {componentes.map((c, idx) => (
               <div key={idx} className="solicitud-componente">
                 <div className="solicitud-componente-header">
                   <p className="solicitud-componente-titulo">Componente {idx + 1}</p>
-                  {idx > 0 && (
-                    <button type="button" className="solicitud-btn-ghost" onClick={() => quitarComponente(idx)}>
+                  {componentes.length > 1 && (
+                    <button
+                      type="button"
+                      className="solicitud-btn-ghost"
+                      onClick={() => quitarComponente(idx)}
+                      aria-label={`Quitar componente ${idx + 1}`}
+                    >
                       Quitar
                     </button>
                   )}
@@ -425,18 +580,19 @@ function SolicitarServicio() {
                       onChange={(e) => actualizarComponente(idx, 'referencia', e.target.value)}
                     />
                   </div>
-                  <div className="solicitud-campo">
+                  <div className="solicitud-campo solicitud-grid-full">
                     <label className="solicitud-campo-label" htmlFor={`c-${idx}-descripcion`}>
                       Descripción
                     </label>
-                    <input
+                    <textarea
                       id={`c-${idx}-descripcion`}
                       className="solicitud-input"
-                      type="text"
-                      maxLength={255}
+                      rows={2}
+                      maxLength={500}
                       value={c.descripcion}
                       onChange={(e) => actualizarComponente(idx, 'descripcion', e.target.value)}
                     />
+                    <p className="solicitud-contador">{c.descripcion.length}/500</p>
                   </div>
                 </div>
               </div>
@@ -446,10 +602,91 @@ function SolicitarServicio() {
             </button>
           </fieldset>
 
-          <div className="solicitud-nota" role="note">
-            La carga de fotografías de los equipos estará disponible próximamente. Puedes enviarlas por correo o
-            WhatsApp después de confirmar la solicitud.
-          </div>
+          <fieldset>
+            <legend>Fotografías</legend>
+            <p className="solicitud-ayuda" id="f-fotos-ayuda">
+              Opcional. Puedes adjuntar hasta {FOTOS_MAX} fotografías en formato JPG, JPEG o PNG, de máximo
+              10 MB cada una. Ayudan a identificar el estado del componente.
+            </p>
+            <div className="solicitud-campo">
+              <label className="solicitud-campo-label" htmlFor="f-fotos">
+                Añadir fotografías
+              </label>
+              <input
+                id="f-fotos"
+                className="solicitud-file-input"
+                type="file"
+                multiple
+                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                aria-describedby={errorFotos ? 'f-fotos-ayuda f-fotos-error' : 'f-fotos-ayuda'}
+                aria-invalid={errorFotos ? 'true' : undefined}
+                onChange={onFotosChange}
+              />
+            </div>
+            {errorFotos && (
+              <p id="f-fotos-error" className="solicitud-error-campo" role="alert">
+                {errorFotos}
+              </p>
+            )}
+            <p className="solicitud-contador" aria-live="polite">
+              {fotos.length}/{FOTOS_MAX} fotografías adjuntas
+            </p>
+            {fotos.length > 0 && (
+              <ul className="solicitud-fotos" aria-label="Fotografías adjuntas">
+                {fotos.map((foto) => (
+                  <li key={foto.id} className="solicitud-foto">
+                    <img
+                      className="solicitud-foto-img"
+                      src={foto.url}
+                      alt={`Vista previa de ${foto.archivo.name}`}
+                    />
+                    <div className="solicitud-foto-info">
+                      <span className="solicitud-foto-nombre" title={foto.archivo.name}>
+                        {foto.archivo.name}
+                      </span>
+                      <button
+                        type="button"
+                        className="solicitud-btn-ghost"
+                        onClick={() => quitarFoto(foto.id)}
+                        aria-label={`Eliminar ${foto.archivo.name}`}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </fieldset>
+
+          <fieldset>
+            <legend>Preferencia de entrega</legend>
+            <p className="solicitud-ayuda">Opcional. Puedes marcar una, varias o ninguna.</p>
+            <label className="solicitud-check">
+              <input
+                type="checkbox"
+                checked={preferencias.entregar_en_banco}
+                onChange={() => alternarPreferencia('entregar_en_banco')}
+              />
+              <span>Entregar el componente en el banco</span>
+            </label>
+            <label className="solicitud-check">
+              <input
+                type="checkbox"
+                checked={preferencias.avisar_para_coordinar}
+                onChange={() => alternarPreferencia('avisar_para_coordinar')}
+              />
+              <span>Que me avisen para coordinar la entrega</span>
+            </label>
+            <label className="solicitud-check">
+              <input
+                type="checkbox"
+                checked={preferencias.recoger}
+                onChange={() => alternarPreferencia('recoger')}
+              />
+              <span>Que recojan el componente</span>
+            </label>
+          </fieldset>
 
           <div className="solicitud-actions">
             <button type="submit" className="solicitud-btn solicitud-btn-primary" disabled={isLoading}>
