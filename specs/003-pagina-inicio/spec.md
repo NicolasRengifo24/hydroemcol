@@ -24,11 +24,14 @@ industrial, no parecer la plantilla genérica de una empresa tecnológica. La p�
 limita a informar: es también la puerta de entrada al flujo real de negocio, que empieza con
 una solicitud de servicio y continúa con su seguimiento.
 
-**Contexto de contenido:** el contenido textual e imágenes definitivos provienen de un
-folleto físico de la empresa que el usuario transcribirá. El agente no puede leer ni
-interpretar imágenes, por lo que el contenido de esta página se redacta como borrador y debe
-validarse con el folleto real antes de considerar la página terminada. Esta spec no inventa
-requisitos de negocio ni datos que el folleto aún no ha entregado.
+**Contexto de contenido:** el contenido textual de esta página proviene del folleto físico de
+la empresa, transcrito por el usuario en `specs/003-pagina-inicio/contenido-folleto.md`, que es
+la única fuente de contenido textual para la página de inicio. Para esta versión están disponibles
+en `frontend/public/img` las imágenes `productos-1.jpeg`, `productos-2.jpeg` y
+`productos-3.jpeg`; `reparacion-via.jpeg` y
+`transporte-elicoportado-villa-garzon-putumayo.jpeg` se reservan para una futura vista de
+Servicios y no se muestran en el inicio. Esta spec no inventa requisitos de negocio ni datos que
+el folleto no contenga.
 
 ## Usuarios
 
@@ -68,15 +71,24 @@ desde la página de inicio, para consultar el avance sin depender de mensajes o 
 ## Definiciones
 
 - **Hero (encabezado principal):** la primera sección de la página, visible sin desplazarse.
-  Presenta la marca, el mensaje principal, el botón de acción principal y las tres tarjetas de
-  servicio.
+  Presenta el mensaje principal, el botón de acción principal y las tres tarjetas de servicio.
+  La marca se identifica mediante el encabezado compartido; el hero no repite el logo grande.
 - **Tarjeta de servicio:** bloque visual reutilizable que resume una categoría de servicio o
-  componente, con un título y una descripción breve.
-- **Servicios destacados:** sección que presenta las áreas de servicio de la empresa: las
-  mismas tres del hero y otras categorías adicionales, en formato informativo (título y
-  descripción, sin enlace).
+  componente, con un título y una descripción breve. Es contenido informativo y no navegable
+  mientras no se le asigne un destino; si en el futuro se le asigna uno, pasará a ser un
+  elemento interactivo con foco de teclado visible.
+- **Servicios destacados:** sección que presenta las cuatro áreas de productos y servicios de
+  la empresa según el folleto —suministro de repuestos, importación sobre pedido, servicio
+  técnico electrohidráulico e implementación de sistemas—, en formato informativo (título y
+  descripción, sin enlace). El bloque de Importación Sobre Pedido incluye la presentación de las
+  tres imágenes de productos mediante un carrusel accesible.
+- **Carrusel de Importación Sobre Pedido:** presentación de las imágenes
+  `productos-1.jpeg`, `productos-2.jpeg` y `productos-3.jpeg` dentro del bloque de Importación
+  Sobre Pedido de servicios destacados. Incluye controles visibles y operación por teclado, y no
+  es una galería genérica de la sección de componentes y capacidad técnica.
 - **Capacidad técnica / componentes:** sección que comunica qué componentes atiende la
-  empresa y con qué medios técnicos cuenta (por ejemplo, pruebas en banco).
+  empresa, los nombres de las marcas con las que trabaja y con qué medios técnicos cuenta (por
+  ejemplo, pruebas en banco).
 - **Cómo funciona el servicio:** sección que describe, como una secuencia ordenada de pasos,
   el recorrido que sigue una solicitud desde que llega hasta que se entrega.
 - **Llamado a la acción (CTA):** elemento que invita al visitante a realizar una acción
@@ -89,16 +101,18 @@ desde la página de inicio, para consultar el avance sin depender de mensajes o 
 - **Único punto del número de contacto:** una única fuente o valor del número de contacto de la
   empresa, de la que dependen todos los accesos visibles (WhatsApp y llamada); cambiar el valor
   en esa única fuente actualiza todos los accesos a la vez.
-- **Contenido provisional:** texto o imagen de borrador, no proveniente del folleto
-  definitivo, que debe reemplazarse antes de dar la página por terminada.
+- **Contenido provisional:** texto o imagen de borrador que aún no proviene del folleto
+  transcrito ni de los recursos de marca confirmados, y que debe reemplazarse o validarse antes
+  de dar la página por terminada. El texto de servicios y componentes proviene del folleto; las
+  imágenes del folleto y los logotipos de las marcas aún pueden estar pendientes.
 
 ## Requisitos funcionales
 
 ### RF-1 — Estructura y orden de la página
 
 - **RF-1.1** CUANDO un visitante abre la página de inicio, EL SISTEMA muestra las secciones
-  en este orden exacto: (1) hero o encabezado principal con el logotipo, el mensaje, el botón
-  de acción principal y las tres tarjetas, (2) servicios destacados, (3) componentes y
+  en este orden exacto: (1) hero o encabezado principal con el mensaje, el botón de acción
+  principal y las tres tarjetas, (2) servicios destacados, (3) componentes y
   capacidad técnica, (4) cómo funciona el servicio, (5) llamado a la acción final.
 - **RF-1.2** EL SISTEMA no muestra en la página de inicio ninguna sección de contenido
   distinta de las cinco enumeradas en RF-1.1. El encabezado y el pie compartidos del sitio
@@ -110,21 +124,22 @@ desde la página de inicio, para consultar el avance sin depender de mensajes o 
 ### RF-2 — Encabezado principal (hero)
 
 - **RF-2.1** CUANDO un visitante abre la página de inicio, EL SISTEMA muestra primero el hero
-  con cuatro elementos: el logotipo de la marca, un mensaje que explica qué hace la empresa,
-  un botón de acción principal ("solicitar un servicio") y las tres tarjetas de servicio.
-- **RF-2.2** EL SISTEMA muestra en el hero el logotipo completo de la marca —la tuerca junto
-  con el nombre "HYDROEMCOL SERVICE AND PARTS S.A.S"—, que es la versión confirmada de la
-  marca.
+  con tres elementos: un mensaje que explica qué hace la empresa, un botón de acción principal
+  ("solicitar un servicio") y las tres tarjetas de servicio.
+- **RF-2.2** EL SISTEMA no muestra el logotipo grande dentro del hero, porque la marca ya está
+  identificada por el logotipo del encabezado compartido; el hero conserva el h1 provisional
+  actual, el CTA y las tres tarjetas.
 - **RF-2.3** EL SISTEMA muestra en el hero exactamente tres tarjetas de servicio, ni más ni
   menos.
-- **RF-2.4** EL SISTEMA muestra la primera tarjeta del hero con el título "Servicios técnicos
-  hidráulicos" y la descripción "diagnóstico, reparación y pruebas en banco".
-- **RF-2.5** EL SISTEMA muestra la segunda tarjeta del hero con el título "Repuestos e
-  importación sobre pedido" y la descripción "cilindros, bombas, motores, válvulas,
-  orbitroles".
-- **RF-2.6** EL SISTEMA muestra la tercera tarjeta del hero con el título "Sistemas
-  electrohidráulicos a medida" y la descripción "control proporcional, marcha y velocidad,
-  asesoría e implementación".
+- **RF-2.4** EL SISTEMA muestra la primera tarjeta del hero con el título "Servicio técnico
+  hidráulico y electrohidráulico" y la descripción "diagnóstico, reparación y pruebas en
+  banco".
+- **RF-2.5** EL SISTEMA muestra la segunda tarjeta del hero con el título "Suministro de
+  repuestos e importación sobre pedido" y la descripción "bombas, motores, cilindros,
+  válvulas, orbitroles".
+- **RF-2.6** EL SISTEMA muestra la tercera tarjeta del hero con el título "Implementación de
+  sistemas electrohidráulicos a medida" y la descripción "control proporcional, control de
+  marcha y velocidades, asesoría e implementación".
 - **RF-2.7** EL SISTEMA hace visible el mensaje principal y las tres tarjetas sin exigir
   desplazamiento horizontal en ninguna anchura soportada.
 
@@ -137,8 +152,10 @@ desde la página de inicio, para consultar el avance sin depender de mensajes o 
   movimiento, EL SISTEMA muestra las tres tarjetas sin animación, con todo su contenido
   visible y legible de forma estática.
 - **RF-3.3** EL SISTEMA mantiene visible en todo momento la respuesta de cada tarjeta a la
-  interacción del visitante (señalización al pasar el puntero, foco de teclado y pulsación
-  táctil), de modo que la animación no la oculte ni la atenúe.
+  interacción del visitante (señalización al pasar el puntero y pulsación táctil), de modo que
+  la animación no la oculte ni la atenúe. Las tarjetas del hero son contenido informativo y no
+  navegable en esta versión; SI en una versión futura una tarjeta pasa a ser interactiva (por
+  ejemplo, un enlace), ENTONCES EL SISTEMA le añade un estado de foco de teclado visible.
 - **RF-3.4** SI el contenido definitivo de una tarjeta aún no está disponible, ENTONCES EL
   SISTEMA mantiene visible el texto provisional o el título confirmado de esa tarjeta, sin
   dejar el espacio vacío.
@@ -146,30 +163,67 @@ desde la página de inicio, para consultar el avance sin depender de mensajes o 
 ### RF-4 — Servicios destacados
 
 - **RF-4.1** CUANDO un visitante abre la página de inicio, EL SISTEMA presenta una sección de
-  servicios destacados que incluye las mismas tres áreas de servicio del hero y, además, otras
-  categorías (orientativas: banco de pruebas, importación sobre pedido, asesoría e
-  implementación, y servicios ya realizados), cada una con un título y una descripción breve.
-  El contenido concreto de todas las categorías queda provisional a la espera del folleto.
+  servicios destacados con los cuatro bloques de productos y servicios del folleto, cada uno
+  con un título y una descripción breve tomada del folleto:
+  - "Suministro de Repuestos" — repuestos de excelente calidad para bombas y motores
+    hidráulicos.
+  - "Importación Sobre Pedido" — solución para equipos cuyos repuestos no son comunes o son de
+    referencias especiales.
+  - "Servicio técnico electrohidráulico" — servicio en sistemas eléctricos de mando ligados a
+    la hidráulica: control proporcional, control de marcha y velocidades, combinaciones
+    valvulares y sistemas sensorizados.
+  - "Implementación de sistemas" — asesoría y ejecución de sistemas electrohidráulicos a la
+    medida, por sustitución de un sistema obsoleto o por creación desde cero.
 - **RF-4.2** EL SISTEMA presenta cada servicio destacado como contenido informativo (título y
   descripción), sin enlace ni acción de navegación.
 - **RF-4.3** SI el contenido de un servicio destacado aún no está confirmado con el folleto,
   ENTONCES EL SISTEMA muestra el texto provisional sin afirmar datos de negocio no
-  verificados (precios, disponibilidad, capacidades numéricas o marcas).
+  verificados (precios, disponibilidad o capacidades numéricas).
 - **RF-4.4** EL SISTEMA presenta los servicios destacados en el mismo orden en cada carga de
   la página.
+- **RF-4.5** EL SISTEMA incorpora dentro del bloque "Importación Sobre Pedido" las imágenes
+  `productos-1.jpeg`, `productos-2.jpeg` y `productos-3.jpeg`, ubicadas en
+  `frontend/public/img`, mediante un carrusel visualmente integrado al bloque. No las presenta
+  como una galería genérica dentro de Componentes y capacidad técnica.
+- **RF-4.6** EL SISTEMA permite operar el carrusel con controles visibles y teclado, sin depender
+  únicamente de gestos táctiles. Cada imagen conserva un texto alternativo significativo
+  confirmado para su contenido.
+- **RF-4.7** MIENTRAS el visitante tenga activada la preferencia de reducir movimiento, EL
+  SISTEMA evita la transición animada del carrusel y mantiene accesibles sus controles y la
+  imagen activa.
+- **RF-4.8** SI una imagen del carrusel no carga, EL SISTEMA mantiene el bloque de Importación
+  Sobre Pedido comprensible, sin mostrar un espacio roto ni generar desplazamiento horizontal.
 
 ### RF-5 — Componentes y capacidad técnica
 
 - **RF-5.1** CUANDO un visitante abre la página de inicio, EL SISTEMA presenta una sección que
   comunica qué componentes atiende la empresa, incluyendo al menos cilindros, bombas, motores,
-  orbitroles, controles y válvulas.
+  orbitroles, controles, válvulas y otros componentes hidráulicos y electrohidráulicos.
 - **RF-5.2** EL SISTEMA presenta en esa sección la capacidad técnica de la empresa,
   mencionando explícitamente las pruebas en banco.
-- **RF-5.3** SI una categoría de componente o una capacidad técnica no está confirmada con el
-  folleto, ENTONCES EL SISTEMA la muestra como contenido provisional y no como hecho
-  comercial definitivo.
+- **RF-5.3** SI una categoría de componente o una capacidad técnica no está confirmada,
+  ENTONCES EL SISTEMA la muestra como contenido provisional y no como hecho comercial
+  definitivo.
 - **RF-5.4** EL SISTEMA expone los componentes y capacidades en formato de lista o conjunto de
   bloques escaneables, no en un párrafo de texto continuo.
+- **RF-5.5** EL SISTEMA muestra dentro de esa sección los nombres de las marcas que atiende
+  como texto —Komatsu, Bobcat, Ingersoll Rand, Genie, Soilmeca, Link-Belt, Eaton, Bosch
+  Rexroth, Sauer Danfoss, Kawasaki Hydraulics, Caterpillar, Kayaba, Linde y Denison—, sin usar
+  imágenes o logotipos de esas marcas ni afirmar que existan.
+- **RF-5.6** EL SISTEMA incluye dentro de esa sección un video que muestra una pieza montada en
+  el banco de pruebas; el contenido de referencia es el archivo disponible en
+  `frontend/public/vid/video-banco-prueba.mp4`. El video refuerza el POR QUÉ de la sección:
+  demostrar la capacidad técnica real de la empresa.
+- **RF-5.7** EL SISTEMA no reproduce el sonido del video sin que el visitante lo active;
+  cuando el video se reproduce automáticamente, lo hace en silencio.
+- **RF-5.8** EL SISTEMA ofrece un control visible para reproducir y pausar el video.
+- **RF-5.9** MIENTRAS el dispositivo del visitante tenga activada la preferencia de reducir
+  movimiento, EL SISTEMA no reproduce el video de forma automática.
+- **RF-5.10** SI el archivo del video no está disponible o falla su carga, ENTONCES EL SISTEMA
+  mantiene la sección comprensible y no deja un espacio roto ni vacío.
+- **RF-5.11** EL SISTEMA no muestra en esta sección las imágenes `productos-1.jpeg`,
+  `productos-2.jpeg` ni `productos-3.jpeg`; esas imágenes pertenecen al bloque de Importación
+  Sobre Pedido de RF-4.
 
 ### RF-6 — Cómo funciona el servicio
 
@@ -200,8 +254,9 @@ desde la página de inicio, para consultar el avance sin depender de mensajes o 
 - **RF-8.1** EL SISTEMA usa el azul corporativo #2E3192 como color principal de la página de
   inicio.
 - **RF-8.2** EL SISTEMA usa el color #FFC908 como color de acento de la página de inicio.
-- **RF-8.3** EL SISTEMA usa el logotipo completo de la marca de forma consistente en la página
-  de inicio, sin deformarlo ni recolorearlo fuera de la paleta corporativa.
+- **RF-8.3** EL SISTEMA usa el logotipo completo de la marca de forma consistente en el
+  encabezado compartido de la página de inicio, sin duplicarlo como logo grande en el hero, sin
+  deformarlo ni recolorearlo fuera de la paleta corporativa.
 - **RF-8.4** EL SISTEMA no comunica información importante únicamente por medio del color.
 
 ### RF-9 — Contacto directo (WhatsApp)
@@ -227,13 +282,23 @@ desde la página de inicio, para consultar el avance sin depender de mensajes o 
 - **RF-10.3** EL SISTEMA muestra en el pie compartido un acceso a la página de Facebook de la
   empresa, que es la única red social incluida.
 
-### RF-11 — Contenido provisional y validación
+### RF-11 — Contenido y validación
 
-- **RF-11.1** MIENTRAS el contenido del folleto no se haya incorporado, EL SISTEMA presenta el
-  texto de la página de inicio como borrador y no publica cifras, capacidades, marcas ni
-  disponibilidad no confirmadas.
-- **RF-11.2** CUANDO el contenido definitivo del folleto esté disponible, EL SISTEMA permite
-  reemplazar el texto provisional sin alterar la estructura ni el orden de las secciones.
+- **RF-11.1** EL SISTEMA presenta en la página de inicio el texto proveniente del folleto
+  transcrito en `specs/003-pagina-inicio/contenido-folleto.md` y no publica cifras,
+  capacidades, disponibilidad ni otros datos de negocio que el folleto no contenga.
+- **RF-11.2** MIENTRAS los logotipos de las marcas no estén disponibles, EL SISTEMA mantiene
+  esos elementos como pendientes, sin dejar espacios vacíos ni inventar recursos, y muestra los
+  nombres de las marcas como texto. Las tres imágenes de productos definidas en RF-4.5 sí se
+  incorporan en el carrusel de Importación Sobre Pedido.
+- **RF-11.3** CUANDO el usuario aporte otras imágenes del folleto o los logotipos de las marcas,
+  EL SISTEMA permite incorporarlos sin alterar la estructura ni el orden de las secciones; las
+  tres imágenes definidas en RF-4.5 mantienen su ubicación dentro de Importación Sobre Pedido.
+- **RF-11.4** EL SISTEMA muestra en el inicio únicamente `productos-1.jpeg`,
+  `productos-2.jpeg` y `productos-3.jpeg`, dentro del bloque de Importación Sobre Pedido. No
+  muestra todavía `reparacion-via.jpeg` ni
+  `transporte-elicoportado-villa-garzon-putumayo.jpeg`; estos recursos quedan reservados para
+  una futura vista o sección de Servicios y permanecen en `frontend/public/img`.
 
 ## Requisitos no funcionales
 
@@ -263,11 +328,17 @@ desde la página de inicio, para consultar el avance sin depender de mensajes o 
 - **RNF-10** Si una imagen de marca o de contenido no carga, la página debe seguir siendo
   comprensible y usable, sin depender de esa imagen para transmitir la información.
 - **RNF-11** La carga de las imágenes no debe provocar que el contenido salte de posición ni
-  mermar la fluidez de la página.
+  mermar la fluidez de la página. El carrusel no debe generar overflow horizontal.
 - **RNF-12** Los textos visibles de la página deben estar en español y usar la terminología de
   la empresa de forma consistente.
 - **RNF-13** La página debe ser visual y funcionalmente consistente con el resto del sitio, de
   modo que el visitante reconozca una misma identidad y un mismo comportamiento.
+- **RNF-14** Los controles del carrusel deben tener foco visible, ser alcanzables y operables con
+  teclado, y contar con un área táctil mínima de 44×44 px. El carrusel no puede depender solo de
+  gestos.
+- **RNF-15** Las imágenes del carrusel deben usar textos alternativos significativos y
+  confirmados, no limitarse a repetir el nombre del archivo. Las imágenes que no aporten
+  información deben declararse decorativas según RNF-5.
 
 ## Casos límite
 
@@ -275,21 +346,33 @@ desde la página de inicio, para consultar el avance sin depender de mensajes o 
   desplazamiento horizontal ni recortes de texto.
 - El visitante tiene activada la preferencia de reducir movimiento: las tres tarjetas del hero
   se muestran completas y estáticas, y ninguna información queda solo en la animación.
+- El visitante usa el carrusel de Importación Sobre Pedido solo con teclado: puede moverlo con
+  controles visibles, alcanzar cada control con foco visible y no necesita un gesto táctil.
+- El visitante tiene activada la preferencia de reducir movimiento: el carrusel no ejecuta
+  transiciones animadas y la imagen activa sigue siendo comprensible.
 - El sistema operativo o el navegador bloquea la apertura de WhatsApp: el visitante encuentra
   una alternativa de contacto comprensible en la misma página.
 - El número de contacto aún es el de desarrollo (312 5967913): la página debe seguir siendo
   funcional y no debe presentarlo como dato definitivo de producción.
 - Las imágenes de marca o de producto no cargan o tardan: la página conserva su estructura y
   su mensaje principal.
-- El visitante navega solo con teclado: puede recorrer las secciones, las tarjetas y las
-  acciones, y ver siempre el foco.
+- El visitante abre la página en una anchura pequeña mientras usa el carrusel: las imágenes y
+  controles se mantienen dentro del contenedor, sin overflow horizontal ni recortes de acciones.
+- El video del banco de pruebas no está disponible o falla su carga: la sección de componentes
+  y capacidad técnica sigue siendo comprensible y no queda un espacio roto.
+- El visitante navega solo con teclado: puede recorrer las secciones y las acciones, y ver
+  siempre el foco. Las tarjetas del hero son contenido informativo y no reciben foco de teclado
+  en esta versión.
 - El visitante amplía la página al 200 %: el contenido sigue siendo legible y no se pierde
   ninguna acción.
-- El contenido definitivo del folleto todavía no llegó: la página muestra texto provisional y
-  no inventa datos de negocio ni de productos.
+- Las imágenes del folleto o los logotipos de las marcas todavía no llegaron: la página conserva
+  su estructura, muestra los nombres de las marcas como texto y no inventa recursos ni datos de
+  negocio.
 - El visitante llega desde un enlace directo al final de la página: las acciones principales
   siguen siendo alcanzables.
 - El script de la página tarda en cargar: el contenido principal no queda vacío.
+- `reparacion-via.jpeg` o `transporte-elicoportado-villa-garzon-putumayo.jpeg` existen en
+  `frontend/public/img`: no se muestran todavía en el inicio y no se eliminan del directorio.
 
 ## Fuera de alcance
 
@@ -300,11 +383,17 @@ Esta versión **no** incluye:
 - La página "Nosotros" y cualquier otra página del sitio: Servicios, Soluciones, Contacto,
   Solicitar servicio, Seguimiento y el panel administrativo. Esta spec solo cubre la página de
   inicio.
+- La misión, la visión y los valores de la empresa: pertenecen a la página "Quiénes somos"
+  (Nosotros) y no a la página de inicio.
 - Cambios en el backend, en la API o en la lógica de negocio.
 - Catálogo comercial, e-commerce, carrito, pagos, precios, inventario público o disponibilidad
   de productos.
-- La recolección y transcripción del contenido del folleto físico: es una dependencia externa
-  que aporta el usuario.
+- La recolección de los recursos gráficos del folleto físico y de los logotipos de las marcas:
+  es una dependencia externa que aporta el usuario; lo que está pendiente se lista en Dudas
+  abiertas.
+- Una galería genérica de imágenes en Componentes y capacidad técnica, y la incorporación de
+  `reparacion-via.jpeg` o `transporte-elicoportado-villa-garzon-putumayo.jpeg` en la página de
+  inicio. Esos recursos quedan reservados para una futura vista o sección de Servicios.
 - La creación de cuentas de cliente o cualquier autenticación en el sitio público.
 - Integración con WhatsApp Business API o cualquier automatización de mensajería.
 - Redes sociales distintas de Facebook (única red confirmada).
@@ -320,14 +409,15 @@ La página de inicio está terminada cuando:
 2. Las cinco secciones aparecen en el orden definido en RF-1.1 y no se muestra ninguna otra
    sección de contenido; el encabezado, el pie y el acceso a contacto son elementos
    estructurales permitidos.
-3. El hero muestra el logotipo completo de la marca, el mensaje principal, el botón de acción
-   principal y exactamente tres tarjetas con los tres títulos y descripciones definidos en
-   esta spec (RF-2.4 a RF-2.6), pendientes de validar con el folleto.
+3. El encabezado compartido muestra el logotipo de la marca y el hero, sin repetirlo como logo
+   grande, conserva el h1 provisional actual, el botón de acción principal y exactamente tres
+   tarjetas con los tres títulos y descripciones definidos en esta spec (RF-2.4 a RF-2.6),
+   tomados del folleto.
 4. Las tres tarjetas del hero reproducen su animación al aparecer la página y la terminan en
    un tiempo acotado, conservan siempre visible su contenido y, con la preferencia de reducir
    movimiento activada, se muestran sin animación y completas.
 5. La página usa el azul #2E3192 como color principal y el #FFC908 como acento, y el logotipo
-   se muestra sin deformar.
+   del encabezado se muestra sin deformar ni duplicarse en el hero.
 6. La página ofrece acceso directo a WhatsApp con el número 312 5967913, definido en un único
    lugar y marcado como temporal.
 7. La sección final presenta las tres acciones (solicitar servicio, seguimiento, contacto),
@@ -343,35 +433,42 @@ La página de inicio está terminada cuando:
     está activa.
 11. Los estados de carga, vacío y error se comportan según RNF-9 donde existan datos
     cargados, y la página nunca queda en blanco.
-12. Si el contenido definitivo del folleto está disponible, su texto e imágenes han sido
-    incorporados y validados por el usuario y ya no queda contenido provisional; mientras no
-    esté disponible, la página funciona con el contenido provisional como borrador válido.
+12. El texto de servicios, componentes y capacidad técnica proviene del folleto; las imágenes
+    del folleto y los logotipos de las marcas han sido incorporados y validados por el usuario
+    cuando estén disponibles, y mientras tanto la página muestra los nombres de las marcas como
+    texto, sin dejar contenido vacío ni inventado.
+13. La sección de servicios destacados presenta los cuatro bloques del folleto y la sección de
+    componentes muestra los nombres de las marcas como texto, sin depender de logotipos de
+    marca.
+14. La sección de componentes y capacidad técnica incluye el video del banco de pruebas, que no
+     reproduce sonido sin que el visitante lo active, ofrece control de reproducir y pausar, no
+     se reproduce solo con la preferencia de reducir movimiento activa y, si no carga, deja la
+     sección comprensible sin espacio roto.
+15. El bloque de Importación Sobre Pedido contiene un carrusel con `productos-1.jpeg`,
+    `productos-2.jpeg` y `productos-3.jpeg`, con controles visibles y operables por teclado,
+    foco visible, áreas táctiles de al menos 44×44 px, textos alternativos significativos
+    confirmados, reducción de movimiento y sin overflow horizontal.
+16. La página de inicio no muestra `reparacion-via.jpeg` ni
+    `transporte-elicoportado-villa-garzon-putumayo.jpeg`; ambos recursos permanecen disponibles
+    en `frontend/public/img` para una futura vista o sección de Servicios.
 
 ## Dudas abiertas
 
-- [NECESITA ACLARACIÓN] Contenido real del folleto físico (textos e imágenes definitivos de
-  servicios, componentes y capacidad técnica). El agente no puede leer imágenes; el usuario
-  transcribirá el texto. Todo el contenido de la página es un borrador a validar contra el
-  folleto.
+- [NECESITA ACLARACIÓN] Texto alternativo exacto y validado para cada una de las tres imágenes
+  `productos-1.jpeg`, `productos-2.jpeg` y `productos-3.jpeg`; debe describir su contenido real
+  y no puede inferirse únicamente desde el nombre del archivo.
+- [NECESITA ACLARACIÓN] Logotipos de las marcas: pendientes de aportar por el usuario (no se
+  generan); mientras tanto la página muestra los nombres de las marcas como texto; cuando
+  existan irán en `frontend/public/img/marcas/`.
 - [NECESITA ACLARACIÓN] Número de contacto definitivo de producción; el +57 312 5967913 es
   temporal, solo para desarrollo.
 - [NECESITA ACLARACIÓN] Mensaje inicial de la conversación de WhatsApp: no se ha definido su
   contenido.
-- [NECESITA ACLARACIÓN] Número de accesos visibles a WhatsApp en la página de inicio: si debe
-  haber uno solo o varios que compartan el mismo valor de contacto.
-- [NECESITA ACLARACIÓN] Alcance del seguimiento en esta spec: si debe incluirse aquí la página
-  donde el cliente ingresa o pega su código de servicio, o si la página de inicio solo enlaza
-  al acceso de seguimiento ya existente.
 - [NECESITA ACLARACIÓN] Variantes del logotipo para fondos oscuros: los recursos de marca
-  disponibles son `frontend/public/logo-completo.jpg` y `frontend/public/logo-solo-tuerca.jpg`
-  (imágenes con fondo blanco) y `frontend/public/favicon.svg` (icono vectorial); no existe una
-  versión vectorial del logotipo completo ni de la tuerca apta para fondos oscuros, y debe
-  definirse cómo se resuelve.
+  disponibles en `frontend/public/` son `logo-completo.jpg` y `logo-solo-tuerca.jpg` (imágenes
+  con fondo blanco) y `favicon.svg` (icono vectorial); no existe una versión vectorial del
+  logotipo completo ni de la tuerca apta para fondos oscuros, y debe definirse cómo se resuelve.
 - [NECESITA ACLARACIÓN] Contenido exacto de la sección "Cómo funciona el servicio": los pasos
-  deben validarse con el folleto y con el flujo de negocio aprobado.
-- [NECESITA ACLARACIÓN] Categorías de componentes definitivas que se mostrarán y su
-  denominación correcta (por ejemplo, confirmar si la denominación es "orbitrol" u
-  "orbitroles").
-- [NECESITA ACLARACIÓN] Alcance de "servicios ya realizados" en Servicios destacados: si
-  implica una galería de trabajos hechos (lo que sería una sección nueva y cambiaría la
-  estructura de cinco secciones) o solo más categorías informativas.
+  deben definirse con el flujo de negocio aprobado y el folleto.
+- [NECESITA ACLARACIÓN] Denominación de componentes: el usuario y `CONTEXTO_MAESTRO.md` usan
+  "orbitroles" (plural) y el backend usa "orbitrol" en algunos tests; confirmar cuál mostrar.
