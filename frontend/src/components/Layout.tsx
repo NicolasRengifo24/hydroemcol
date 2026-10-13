@@ -1,5 +1,5 @@
-import { Droplets } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
+import Logo from './brand/Logo'
 
 const navItems = [
   { to: '/', label: 'Inicio' },
@@ -15,9 +15,8 @@ function Layout() {
   return (
     <div className="layout">
       <header className="header">
-        <NavLink to="/" className="brand">
-          <Droplets aria-hidden="true" />
-          <span>HydroEmcol</span>
+        <NavLink to="/" className="brand" aria-label="Hidroemcol - inicio">
+          <Logo />
         </NavLink>
         <nav className="nav" aria-label="Navegación principal">
           {navItems.map((item) => (

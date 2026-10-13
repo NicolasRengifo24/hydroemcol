@@ -1,12 +1,29 @@
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/montserrat-latin.woff2') format('woff2');
+}
+
 :root {
   --color-bg: #ffffff;
   --color-bg-alt: #f4f6f8;
-  --color-text: #1c2530;
+  --color-text: #212121;
   --color-text-muted: #5b6672;
-  --color-primary: #0e5a8a;
-  --color-primary-dark: #0a4468;
+  --color-primary: #2e3192;
+  --color-primary-dark: #23266e;
+  --color-primary-soft: #eaebf6;
+  --color-accent: #ffcb1f;
+  --color-accent-soft: #fff6d6;
   --color-border: #dbe2e8;
   --color-white: #ffffff;
+  --color-danger: #b3261e;
+  --color-danger-soft: #fbeaea;
+  --color-success: #1f7a45;
+  --color-success-soft: #e6f4ec;
+
+  --font-display: 'Montserrat', system-ui, 'Segoe UI', Roboto, sans-serif;
 
   font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
   color: var(--color-text);
