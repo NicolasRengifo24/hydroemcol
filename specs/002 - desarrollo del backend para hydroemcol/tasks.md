@@ -165,12 +165,12 @@ componente sin finalizar.
 
 **Notas de la fase 3:**
 
-- **Base de datos de test:** `hydroemcol_user` no tiene `CREATEDB`, así que Django no puede
-  crear `test_hydroemcol` y los `TestCase` fallaban con *se ha denegado el permiso para crear
-  la base de datos*. Decisión del usuario: ejecutar los tests con `DATABASE_URL` apuntando a un
-  SQLite temporal, sin tocar `config/settings.py`. Consecuencia asumida: los tests de modelo no
-  verifican el comportamiento de PostgreSQL. Para volver a probar sobre PostgreSQL hace falta
-  una base de test dedicada o darle `CREATEDB` al usuario.
+- **Base de datos de test:** `hydroemcol_user` ya tiene `CREATEDB` (se le concedió con
+  `ALTER ROLE hydroemcol_user CREATEDB;` en el PostgreSQL local). `manage.py test` crea y
+  destruye `test_hydroemcol` automáticamente sobre PostgreSQL, sin workarounds. Verificado:
+  `manage.py test servicios.tests.test_solicitudes_publicas` → 32 tests OK y `manage.py test`
+  (suite completa) → **243 tests OK**. La nota anterior sobre ejecutar los tests con
+  `DATABASE_URL` apuntando a un SQLite temporal queda obsoleta.
 - Un test falló al redactarlo y era del test: `test_el_historial_sobrevive_al_componente` pedía
   que el historial sobreviviera al componente, pero el modelo lo borra en cascada a propósito.
   Reescrito como `test_el_historial_se_borra_con_el_componente`.
