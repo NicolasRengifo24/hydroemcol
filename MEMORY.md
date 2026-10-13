@@ -23,7 +23,7 @@ Roadmap aprobado en `CONTEXTO_MAESTRO.md` §42.
 | 3 — Frontend público | Landing, Nosotros, Servicios, Soluciones, Contacto, Solicitar, Seguimiento | **Solo andamiaje** — las 8 páginas son placeholders |
 | 4 — Panel administrativo | Login, dashboard, servicios, detalle, cotizaciones | **Placeholder** (`/admin`) |
 | 5 — Pruebas del flujo completo | Solicitud → entrega | **No iniciada** |
-| 002 — Cotización por componente | Estados en el componente, reglas de proceso, acciones de API y admin | **Completada** — 201 tests |
+| 002 — Cotización por componente | Estados en el componente, reglas de proceso, acciones de API y admin | **Completada** — 248 tests |
 
 **Gaps transversales:**
 
@@ -31,7 +31,7 @@ Roadmap aprobado en `CONTEXTO_MAESTRO.md` §42.
   manejo/guardado del token JWT. `src/services/` y `src/hooks/` solo tienen README de marcador.
   Esta es la brecha que bloquea las fases 3 y 4. Tampoco hay forma de consumir el estado del
   componente en el seguimiento (ver §2, "Tiempo real del cliente").
-- **Tests: solo backend.** 201 tests con `manage.py test` (`usuarios`, `servicios`, modelos,
+- **Tests: solo backend.** 248 tests con `manage.py test` (`usuarios`, `servicios`, modelos,
   reglas, serializers, API, admin y recorridos). El frontend no tiene runner instalado, así
   que sigue sin cobertura.
 - **Despliegue sin configurar.** `settings.py:39` fija `ALLOWED_HOSTS` a `localhost/127.0.0.1`
@@ -315,7 +315,7 @@ Formato de entrada: fecha, qué se hizo, archivos tocados, decisiones que implic
 ### 2026-10-04 — Especificación 002: cotización por componente (cerrada)
 
 Cierra el hueco de modelo que la entrada anterior dejó abierto. **Backend completo, frontend sin
-tocar.** 29 tareas, 201 tests en verde, `manage.py check` sin incidencias.
+tocar.** 29 tareas, 248 tests en verde, `manage.py check` sin incidencias.
 
 **Migración nueva** (`servicios.0003_componente_por_cotizacion`, principio 2 de la constitución):
 

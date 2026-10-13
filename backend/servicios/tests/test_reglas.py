@@ -1,4 +1,4 @@
-"""Tests de las funciones puras de decisiÃ³n de `reglas.py`.
+"""Tests de las funciones puras de decisión de `reglas.py`.
 
 
 
@@ -6,15 +6,15 @@
 
 
 
-Cada test corresponde a un requisito o a un caso lÃ­mite de la
+Cada test corresponde a un requisito o a un caso límite de la
 
 
 
-especificaciÃ³n 002. Son funciones puras: reciben el estado actual (`hoy`) y
+especificación 002. Son funciones puras: reciben el estado actual (`hoy`) y
 
 
 
-devuelven una decisiÃ³n, sin tocar la base de datos ni la hora del sistema.
+devuelven una decisión, sin tocar la base de datos ni la hora del sistema.
 
 
 
@@ -22,7 +22,7 @@ devuelven una decisiÃ³n, sin tocar la base de datos ni la hora del sistema.
 
 
 
-T2 cubre `tiene_trabajo_iniciado` y `puede_continuar`. Las demÃ¡s reglas se
+T2 cubre `tiene_trabajo_iniciado` y `puede_continuar`. Las demás reglas se
 
 
 
@@ -102,7 +102,7 @@ def componente(id=1, estado=EstadoComponente.PENDIENTE, trabajo_iniciado=False):
 
 
 
-    """Construye un componente mÃ­nimo para las pruebas."""
+    """Construye un componente mínimo para las pruebas."""
 
 
 
@@ -138,7 +138,7 @@ def cotizacion(es_bloqueante, estado, id=1):
 
 
 
-    """Construye una cotizaciÃ³n mÃ­nima para las pruebas."""
+    """Construye una cotización mínima para las pruebas."""
 
 
 
@@ -186,7 +186,7 @@ def hoy(componentes=None, cotizaciones_por_componente=None):
 
 
 
-    leerÃ¡n las vistas y los serializers. `cotizaciones` es la misma lista en
+    leerán las vistas y los serializers. `cotizaciones` es la misma lista en
 
 
 
@@ -318,7 +318,7 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        """RF-COT-04: se estÃ¡ esperando al cliente."""
+        """RF-COT-04: se está esperando al cliente."""
 
 
 
@@ -346,7 +346,7 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        """RF-COT-05: el cliente no aprobÃ³ lo que cuesta."""
+        """RF-COT-05: el cliente no aprobó lo que cuesta."""
 
 
 
@@ -558,7 +558,7 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        """RF-COT-07: basta una bloqueante que no estÃ© aprobada."""
+        """RF-COT-07: basta una bloqueante que no esté aprobada."""
 
 
 
@@ -654,11 +654,11 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        El estado `rechazado_bloqueante` siempre viene acompaÃ±ado de la
+        El estado `rechazado_bloqueante` siempre viene acompañado de la
 
 
 
-        cotizaciÃ³n bloqueante en estado `rechazada`, que es la que sigue
+        cotización bloqueante en estado `rechazada`, que es la que sigue
 
 
 
@@ -718,7 +718,7 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        """RF-COT-05: la condiciÃ³n deja de aplicar si el rechazo se revierte."""
+        """RF-COT-05: la condición deja de aplicar si el rechazo se revierte."""
 
 
 
@@ -814,7 +814,7 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        """CL-01: bloqueante, no bloqueante y sin cotizaciÃ³n conviven."""
+        """CL-01: bloqueante, no bloqueante y sin cotización conviven."""
 
 
 
@@ -890,7 +890,7 @@ class TestPuedeContinuar(SimpleTestCase):
 
 
 
-        """CL-04: los que pueden avanzar continÃºan y el servicio sigue abierto."""
+        """CL-04: los que pueden avanzar continúan y el servicio sigue abierto."""
 
 
 
@@ -1002,7 +1002,7 @@ class TestEstadoPorRechazoBloqueante(SimpleTestCase):
 
 
 
-        """Una cotizaciÃ³n pendiente no fija estado: el componente sigue PENDIENTE."""
+        """Una cotización pendiente no fija estado: el componente sigue PENDIENTE."""
 
 
 
@@ -1218,7 +1218,7 @@ class TestMotivoBloqueo(SimpleTestCase):
 
 
 
-    """RF-COT-04 y RF-COT-05: el sistema explica por quÃ© el componente estÃ¡ detenido."""
+    """RF-COT-04 y RF-COT-05: el sistema explica por qué el componente está detenido."""
 
 
 
@@ -1410,7 +1410,7 @@ class TestComponentesNoFinalizados(SimpleTestCase):
 
 
 
-    """Criterio Ãºnico del glosario 4.8: servicio abierto con componentes sin cerrar."""
+    """Criterio único del glosario 4.8: servicio abierto con componentes sin cerrar."""
 
 
 
@@ -1858,11 +1858,11 @@ class TestPuedeFinalizarServicio(SimpleTestCase):
 
 
 
-    Criterio Ãºnico de habilitaciÃ³n: todos los componentes finalizados. El
+    Criterio único de habilitación: todos los componentes finalizados. El
 
 
 
-    caso 2 de RF-COT-11 es el motivo del cierre, no una condiciÃ³n aparte.
+    caso 2 de RF-COT-11 es el motivo del cierre, no una condición aparte.
 
 
 
@@ -1946,7 +1946,7 @@ class TestPuedeFinalizarServicio(SimpleTestCase):
 
 
 
-        """RF-COT-12: una pendiente no habilita el cierre por sÃ­ sola.
+        """RF-COT-12: una pendiente no habilita el cierre por sí sola.
 
 
 
@@ -1954,7 +1954,7 @@ class TestPuedeFinalizarServicio(SimpleTestCase):
 
 
 
-        El componente con la cotizaciÃ³n pendiente sigue sin finalizar, asÃ­ que
+        El componente con la cotización pendiente sigue sin finalizar, así que
 
 
 
@@ -1962,7 +1962,7 @@ class TestPuedeFinalizarServicio(SimpleTestCase):
 
 
 
-        componente, no la pendiente en sÃ­.
+        componente, no la pendiente en sí.
 
 
 
@@ -2134,7 +2134,7 @@ class TestPuedeFinalizarServicio(SimpleTestCase):
 
 
 
-        """CL-03 no bloquea el cierre si el componente ya se cerrÃ³."""
+        """CL-03 no bloquea el cierre si el componente ya se cerró."""
 
 
 
@@ -2186,7 +2186,7 @@ class TestPuedeFinalizarServicio(SimpleTestCase):
 
 
 
-        """CL-03: hay trabajo y ademÃ¡s falta cerrar ese componente."""
+        """CL-03: hay trabajo y además falta cerrar ese componente."""
 
 
 
@@ -2342,7 +2342,7 @@ class TestResumenCierre(SimpleTestCase):
 
 
 
-    """El resumen es lo que ve el administrativo: habilitaciÃ³n mÃ¡s motivo."""
+    """El resumen es lo que ve el administrativo: habilitación más motivo."""
 
 
 
@@ -2581,4 +2581,210 @@ class TestResumenCierre(SimpleTestCase):
 
 
 
+
+class TestTextosSinMojibake(SimpleTestCase):
+
+
+
+    """Antirregresion: los textos visibles deben estar en espanol UTF-8 limpio, sin mojibake."""
+
+
+
+
+
+
+
+    def test_motivo_rechazo_bloqueante_texto_exacto(self):
+
+
+
+        estado = hoy(cotizaciones_por_componente={
+
+
+
+            1: [cotizacion(True, 'RECHAZADA')],
+
+
+
+        })
+
+
+
+        self.assertEqual(
+
+
+
+            motivo_bloqueo(estado, estado['componentes'][0]),
+
+
+
+            'El cliente rechazó una cotización bloqueante. '
+
+
+
+            'El componente queda detenido hasta redefinir el alcance.',
+
+
+
+        )
+
+
+
+
+
+
+
+    def test_motivo_pendiente_bloqueante_texto_exacto(self):
+
+
+
+        estado = hoy(cotizaciones_por_componente={
+
+
+
+            1: [cotizacion(True, 'PENDIENTE')],
+
+
+
+        })
+
+
+
+        self.assertEqual(
+
+
+
+            motivo_bloqueo(estado, estado['componentes'][0]),
+
+
+
+            'Hay una cotización bloqueante pendiente de respuesta del cliente. '
+
+
+
+            'El componente queda detenido hasta recibir su respuesta.',
+
+
+
+        )
+
+
+
+
+
+
+
+    def test_resumen_todos_finalizados_texto_exacto(self):
+
+
+
+        estado = hoy(componentes=[
+
+
+
+            componente(id=1, estado=EstadoComponente.FINALIZADO_POR_CLIENTE),
+
+
+
+        ])
+
+
+
+        self.assertEqual(
+
+
+
+            resumen_cierre(estado)['detalle'],
+
+
+
+            'Todos los componentes están finalizados',
+
+
+
+        )
+
+
+
+
+
+
+
+    def test_resumen_rechazadas_sin_trabajo_texto_exacto(self):
+
+
+
+        estado = hoy(
+
+
+
+            componentes=[componente(estado=EstadoComponente.FINALIZADO_POR_TECNICO)],
+
+
+
+            cotizaciones_por_componente={
+
+
+
+                1: [cotizacion(True, 'RECHAZADA')],
+
+
+
+            },
+
+
+
+        )
+
+
+
+        self.assertEqual(
+
+
+
+            resumen_cierre(estado)['detalle'],
+
+
+
+            'Todos los componentes están finalizados. Las cotizaciones '
+
+
+
+            'bloqueantes fueron rechazadas y no se inició trabajo en '
+
+
+
+            'ningún componente',
+
+
+
+        )
+
+
+
+
+
+
+
+    def test_resumen_servicio_en_curso_texto_exacto(self):
+
+
+
+        estado = hoy(componentes=[componente(estado=EstadoComponente.EN_PROCESO)])
+
+
+
+        self.assertEqual(
+
+
+
+            resumen_cierre(estado)['detalle'],
+
+
+
+            'Quedan 1 componente(s) sin finalizar',
+
+
+
+        )
 

@@ -1,9 +1,9 @@
-﻿"""Reglas de negocio puras de los componentes de un servicio.
+"""Reglas de negocio puras de los componentes de un servicio.
 
 Todas las funciones de este archivo:
 
-- reciben `hoy` como primer parÃ¡metro, que es el estado actual del servicio ya
-  leÃ­do y serializado;
+- reciben `hoy` como primer parámetro, que es el estado actual del servicio ya
+  leído y serializado;
 - devuelven un valor (o `None`);
 - no escriben nada, no guardan objetos y no preguntan la hora del sistema.
 
@@ -23,21 +23,21 @@ Todas las funciones de este archivo:
         },
     }
 
-El criterio de la especificaciÃ³n 002 es Ãºnico: un componente tiene posibilidad de
-continuar cuando **ninguna** de sus cotizaciones `bloqueantes` estÃ¡ `pendiente`
+El criterio de la especificación 002 es único: un componente tiene posibilidad de
+continuar cuando **ninguna** de sus cotizaciones `bloqueantes` está `pendiente`
 o `rechazada`. Las cotizaciones `no_bloqueantes` nunca detienen el componente, ni
-siquiera cuando estÃ¡n rechazadas.
+siquiera cuando están rechazadas.
 """
 
 from servicios.estados import ESTADOS_FINALIZACION, EstadoComponente
 
-# Estados de cotizaciÃ³n que detienen un componente mientras siga vigente su
-# cotizaciÃ³n bloqueante.
+# Estados de cotización que detienen un componente mientras siga vigente su
+# cotización bloqueante.
 ESTADOS_COTIZACION_BLOQUEANTE = ('PENDIENTE', 'RECHAZADA')
 
 
 def _cotizaciones_de(hoy, componente):
-    """Devuelve las cotizaciones del componente, o lista vacÃ­a si no tiene."""
+    """Devuelve las cotizaciones del componente, o lista vacía si no tiene."""
     return hoy.get('cotizaciones_por_componente', {}).get(componente['id'], [])
 
 
@@ -51,7 +51,7 @@ def _bloqueantes(hoy, componente):
 
 
 def _tiene_bloqueante_en(hoy, componente, estado):
-    """Indica si alguna cotizaciÃ³n bloqueante del componente estÃ¡ en `estado`."""
+    """Indica si alguna cotización bloqueante del componente está en `estado`."""
     return any(
         cotizacion['estado'] == estado
         for cotizacion in _bloqueantes(hoy, componente)
@@ -59,7 +59,7 @@ def _tiene_bloqueante_en(hoy, componente, estado):
 
 
 def tiene_trabajo_iniciado(hoy, componente):
-    """Indica si la empresa ya empezÃ³ a trabajar sobre el componente.
+    """Indica si la empresa ya empezó a trabajar sobre el componente.
 
     El inicio de trabajo se registra al iniciar el desmontaje (RF-COT-08). Lo
     usa la regla de cierre del servicio, que exige que no haya trabajo en curso.
@@ -70,7 +70,7 @@ def tiene_trabajo_iniciado(hoy, componente):
 def puede_continuar(hoy, componente):
     """Indica si el componente puede pasar a la siguiente fase de trabajo.
 
-    Falso si el componente ya estÃ¡ finalizado, o si tiene alguna cotizaciÃ³n
+    Falso si el componente ya está finalizado, o si tiene alguna cotización
     `bloqueante` en estado `pendiente` o `rechazada`. En cualquier otro caso,
     verdadero.
     """
@@ -88,13 +88,13 @@ def puede_continuar(hoy, componente):
 def estado_por_rechazo_bloqueante(hoy, componente):
     """Devuelve el estado que impone un rechazo bloqueante, o `None`.
 
-    Solo el rechazo de una cotizaciÃ³n `bloqueante` fija el estado del
-    componente a `rechazado_bloqueante` (RF-COT-05). Una cotizaciÃ³n pendiente
-    deja el componente como estÃ¡, y una cotizaciÃ³n `no_bloqueante` rechazada no
+    Solo el rechazo de una cotización `bloqueante` fija el estado del
+    componente a `rechazado_bloqueante` (RF-COT-05). Una cotización pendiente
+    deja el componente como está, y una cotización `no_bloqueante` rechazada no
     cambia nada (RF-COT-06, RF-COT-07).
 
     El rechazo bloqueante tiene prioridad sobre una pendiente: si conviven, el
-    componente estÃ¡ en la situaciÃ³n mÃ¡s restrictiva.
+    componente está en la situación más restrictiva.
     """
     if _tiene_bloqueante_en(hoy, componente, 'RECHAZADA'):
         return EstadoComponente.RECHAZADO_BLOQUEANTE
@@ -102,31 +102,31 @@ def estado_por_rechazo_bloqueante(hoy, componente):
 
 
 def motivo_bloqueo(hoy, componente):
-    """Explica en espaÃ±ol por quÃ© el componente estÃ¡ detenido, o `None`.
+    """Explica en español por qué el componente está detenido, o `None`.
 
-    Distingue los dos motivos posibles: el cliente rechazÃ³ una cotizaciÃ³n
-    bloqueante (RF-COT-05) o todavÃ­a no respondiÃ³ una pendiente (RF-COT-04). Si
-    hay ambos, manda el rechazo, que es el motivo mÃ¡s restrictivo.
+    Distingue los dos motivos posibles: el cliente rechazó una cotización
+    bloqueante (RF-COT-05) o todavía no respondió una pendiente (RF-COT-04). Si
+    hay ambos, manda el rechazo, que es el motivo más restrictivo.
     """
     if _tiene_bloqueante_en(hoy, componente, 'RECHAZADA'):
         return (
-            'El cliente rechazÃ³ una cotizaciÃ³n bloqueante. '
+            'El cliente rechazó una cotización bloqueante. '
             'El componente queda detenido hasta redefinir el alcance.'
         )
     if _tiene_bloqueante_en(hoy, componente, 'PENDIENTE'):
         return (
-            'Hay una cotizaciÃ³n bloqueante pendiente de respuesta del cliente. '
+            'Hay una cotización bloqueante pendiente de respuesta del cliente. '
             'El componente queda detenido hasta recibir su respuesta.'
         )
     return None
 
 
 def componentes_no_finalizados(hoy):
-    """Devuelve los componentes que aÃºn no estÃ¡n cerrados.
+    """Devuelve los componentes que aún no están cerrados.
 
-    Es el criterio Ãºnico del glosario 4.8: el servicio sigue abierto mientras
+    Es el criterio único del glosario 4.8: el servicio sigue abierto mientras
     exista un solo componente sin finalizar, sin importar si ese componente
-    estÃ¡ activo o detenido por un rechazo.
+    está activo o detenido por un rechazo.
     """
     return [
         componente
@@ -136,16 +136,16 @@ def componentes_no_finalizados(hoy):
 
 
 def todos_rechazan_bloqueantes(hoy):
-    """Indica si todas las cotizaciones bloqueantes del servicio estÃ¡n rechazadas.
+    """Indica si todas las cotizaciones bloqueantes del servicio están rechazadas.
 
-    Devuelve `True` solo si existe al menos una cotizaciÃ³n `bloqueante` y todas
-    estÃ¡n en estado `rechazada`:
+    Devuelve `True` solo si existe al menos una cotización `bloqueante` y todas
+    están en estado `rechazada`:
 
-    - sin cotizaciones bloqueantes â†’ `False`, porque no hay nada que rechazar;
-    - alguna `bloqueante` `pendiente` â†’ `False` (RF-COT-12: se estÃ¡ esperando
+    - sin cotizaciones bloqueantes → `False`, porque no hay nada que rechazar;
+    - alguna `bloqueante` `pendiente` → `False` (RF-COT-12: se está esperando
       al cliente, no es que el trabajo se haya descartado);
-    - alguna `bloqueante` `aprobada` â†’ `False`;
-    - todas `bloqueante` `rechazada` â†’ `True`.
+    - alguna `bloqueante` `aprobada` → `False`;
+    - todas `bloqueante` `rechazada` → `True`.
 
     Las cotizaciones `no_bloqueantes` son indiferentes para esta regla.
     """
@@ -160,28 +160,28 @@ def todos_rechazan_bloqueantes(hoy):
 
 
 def puede_finalizar_servicio(hoy):
-    """Indica si estÃ¡ habilitada la acciÃ³n manual de finalizar el servicio.
+    """Indica si está habilitada la acción manual de finalizar el servicio.
 
-    El criterio de habilitaciÃ³n es Ãºnico: todos los componentes deben estar en
-    estado de finalizaciÃ³n (glosario 4.8 y RF-COT-13).
+    El criterio de habilitación es único: todos los componentes deben estar en
+    estado de finalización (glosario 4.8 y RF-COT-13).
 
     El "caso 2" de RF-COT-11 (todas las cotizaciones bloqueantes rechazadas y
-    ningÃºn componente con trabajo iniciado) no habilita el cierre por sÃ­ solo:
+    ningún componente con trabajo iniciado) no habilita el cierre por sí solo:
     describe el motivo por el que se cierra, que es lo que
     `resumen_cierre` le muestra al administrativo.
 
-    Ninguna funciÃ³n de este archivo finaliza un servicio: solo habilitan. La
-    ejecuciÃ³n es siempre una acciÃ³n manual del administrativo (glosario 4.9).
+    Ninguna función de este archivo finaliza un servicio: solo habilitan. La
+    ejecución es siempre una acción manual del administrativo (glosario 4.9).
     """
     return componentes_no_finalizados(hoy) == []
 
 
 def resumen_cierre(hoy):
-    """Devuelve si la acciÃ³n estÃ¡ habilitada y por quÃ©, para la interfaz.
+    """Devuelve si la acción está habilitada y por qué, para la interfaz.
 
-    Devuelve tres claves: `puede_finalizar`, `caso` y `detalle` (en espaÃ±ol).
+    Devuelve tres claves: `puede_finalizar`, `caso` y `detalle` (en español).
     Los casos describen el motivo, no condiciones independientes: solo se
-    habilita cuando todos los componentes estÃ¡n finalizados.
+    habilita cuando todos los componentes están finalizados.
     """
     pendientes = componentes_no_finalizados(hoy)
 
@@ -196,18 +196,18 @@ def resumen_cierre(hoy):
                 'puede_finalizar': True,
                 'caso': 'TODAS_BLOQUEANTES_RECHAZADAS_SIN_TRABAJO',
                 'detalle': (
-                    'Todos los componentes estÃ¡n finalizados. Las cotizaciones '
-                    'bloqueantes fueron rechazadas y no se iniciÃ³ trabajo en '
-                    'ningÃºn componente'
+                    'Todos los componentes están finalizados. Las cotizaciones '
+                    'bloqueantes fueron rechazadas y no se inició trabajo en '
+                    'ningún componente'
                 ),
             }
         return {
             'puede_finalizar': True,
             'caso': 'TODOS_FINALIZADOS',
-            'detalle': 'Todos los componentes estÃ¡n finalizados',
+            'detalle': 'Todos los componentes están finalizados',
         }
 
-    # Queda al menos un componente sin finalizar: la acciÃ³n nunca se habilita.
+    # Queda al menos un componente sin finalizar: la acción nunca se habilita.
     if todos_rechazan_bloqueantes(hoy):
         return {
             'puede_finalizar': False,
@@ -224,7 +224,7 @@ def resumen_cierre(hoy):
         'detalle': f'Quedan {len(pendientes)} componente(s) sin finalizar',
     }
 def estados_cerrados():
-    """Estados de servicio que indican que no estÃ¡ en curso."""
+    """Estados de servicio que indican que no está en curso."""
     from servicios.models import EstadoServicio
 
     return (
@@ -235,12 +235,12 @@ def estados_cerrados():
 
 
 def tiene_solicitud_en_curso(hoy, *, correo_norm=None, telefono_norm=None, whatsapp_norm=None):
-    """Indica si existe alguna solicitud en curso segÃºn correo o telÃ©fono.
+    """Indica si existe alguna solicitud en curso según correo o teléfono.
 
-    Consulta los servicios que no estÃ¡n en `estados_cerrados()` y comparte con
-    ellos el correo, el telÃ©fono o el WhatsApp normalizados (OR). Es la fuente
-    Ãºnica que usa la vista pÃºblica para decidir si debe avisar de un posible
-    duplicado (RF-8.1). `hoy` no se usa; se mantiene por el patrÃ³n del mÃ³dulo.
+    Consulta los servicios que no están en `estados_cerrados()` y comparte con
+    ellos el correo, el teléfono o el WhatsApp normalizados (OR). Es la fuente
+    única que usa la vista pública para decidir si debe avisar de un posible
+    duplicado (RF-8.1). `hoy` no se usa; se mantiene por el patrón del módulo.
     """
     from django.db.models import Q
 
