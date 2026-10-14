@@ -1,7 +1,10 @@
 import { createBrowserRouter } from 'react-router-dom'
 import Layout from './components/Layout'
 import Admin from './pages/Admin'
+import AdminServicios from './pages/AdminServicios'
+import AdminServicioDetalle from './pages/AdminServicioDetalle'
 import AdminLogin from './pages/AdminLogin'
+import AdminLayout from './components/AdminLayout'
 import RutaAdministrativaProtegida from './components/RutaAdministrativaProtegida'
 import Contacto from './pages/Contacto'
 import Inicio from './pages/Inicio'
@@ -23,11 +26,18 @@ export const router = createBrowserRouter([
       { path: 'contacto', element: <Contacto /> },
       { path: 'solicitar', element: <SolicitarServicio /> },
       { path: 'seguimiento/:token', element: <Seguimiento /> },
-      { path: 'admin/login', element: <AdminLogin /> },
-      {
-        element: <RutaAdministrativaProtegida />,
-        children: [{ path: 'admin', element: <Admin /> }],
-      },
     ],
+  },
+  { path: 'admin/login', element: <AdminLogin /> },
+  {
+    element: <RutaAdministrativaProtegida />,
+    children: [{
+      element: <AdminLayout />,
+      children: [
+        { path: 'admin', element: <Admin /> },
+         { path: 'admin/servicios', element: <AdminServicios /> },
+         { path: 'admin/servicios/:id', element: <AdminServicioDetalle /> },
+      ],
+    }],
   },
 ])

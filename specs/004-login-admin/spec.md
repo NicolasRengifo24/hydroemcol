@@ -1,6 +1,6 @@
 # Spec 004 — Login del panel administrativo
 
-Estado: borrador
+Estado: aprobada
 
 ## Contexto y objetivo
 
@@ -52,6 +52,8 @@ seguridad se resuelve en el backend).
   reutilizarse aunque todavía no haya expirado.
 - **Sesión válida:** el navegador del administrativo conserva un token de refresco vigente y
   no revocado.
+- **Duración de credenciales:** el token de acceso dura **15 minutos** y el token de refresco
+  dura **1 día**.
 
 ## Requisitos funcionales
 
@@ -107,14 +109,19 @@ seguridad se resuelve en el backend).
 
 - **RF-18.** SI se superan los intentos de inicio de sesión fallidos permitidos desde el mismo
   origen dentro de una ventana de tiempo, ENTONCES EL SISTEMA responde rechazando la petición
-  sin evaluar las credenciales, e informa al usuario de que debe esperar.
+  sin evaluar las credenciales, e informa al usuario de que debe esperar. El límite es de **5
+  fallos por minuto y por IP**, y solo contabiliza credenciales inválidas o correspondientes a
+  cuentas inactivas; los inicios de sesión válidos y las peticiones a otros endpoints NO
+  consumen el límite.
 - **RF-19.** EL SISTEMA aplica la limitación de intentos **únicamente** al inicio de sesión, y
   no al resto de endpoints del panel.
 
 ### Trazabilidad
 
 - **RF-20.** EL SISTEMA deja constancia de los intentos de inicio de sesión (correctos y
-  fallidos) con su fecha y su resultado, como parte del principio de trazabilidad.
+  fallidos) con su fecha y su resultado, como parte del principio de trazabilidad, mediante
+  logs de aplicación. Esta trazabilidad NO requiere un modelo persistente de intentos ni una
+  migración adicional.
 
 ## Requisitos no funcionales
 
@@ -143,8 +150,9 @@ seguridad se resuelve en el backend).
   mostrar un error técnico.
 - **`is_active` cambiado a falso con la sesión abierta:** la siguiente petición se rechaza
   (RF-17) y la interfaz vuelve al login.
-- **Origen limitado por fuerza bruta:** el límite aplica por origen, de modo que un atacante no
-  puede inferir la existencia de un usuario por el tipo de respuesta.
+- **Origen limitado por fuerza bruta:** el límite de 5 fallos por minuto aplica por IP y solo
+  cuenta credenciales inválidas o cuentas inactivas, de modo que un atacante no puede inferir
+  la existencia de un usuario por el tipo de respuesta.
 
 ## Fuera de alcance
 
@@ -170,13 +178,11 @@ seguridad se resuelve en el backend).
 8. Los intentos de login quedan registrados con fecha y resultado.
 9. Los casos límite anteriores están cubiertos.
 
-## Dudas abiertas
+## Decisiones cerradas
 
-- [NECESITA ACLARACIÓN] Duraciones exactas de las credenciales: se toma **15 minutos** para el
-  token de acceso y **1 día** para el de refresco como valores provisionales. ¿Se confirman o se
-  ajustan?
-- [NECESITA ACLARACIÓN] Umbral del límite de intentos: se propone **5 intentos fallidos por
-  minuto y por origen**. ¿Se confirma, y aplica solo a fallos (no a logins correctos)?
-- [NECESITA ACLARACIÓN] Mecanismo de la trazabilidad de RF-20: ¿basta con registros de
-  aplicación (logs) o se quiere un registro persistente en base de datos? Lo segundo implica un
-  modelo nuevo y migración (constitución, principio 2) y debe aprobarse aparte.
+- Las duraciones aprobadas son 15 minutos para el token de acceso y 1 día para el token de
+  refresco.
+- El throttling permite como máximo 5 fallos por minuto y por IP, y solo contabiliza
+  credenciales inválidas o cuentas inactivas. Los logins válidos no consumen el límite.
+- RF-20 se implementa mediante logs de aplicación de los intentos correctos y fallidos; no se
+  crea un modelo de intentos ni una migración para esta trazabilidad.

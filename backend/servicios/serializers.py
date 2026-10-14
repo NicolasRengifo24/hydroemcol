@@ -17,8 +17,10 @@ from .models import (
     DetalleCotizacion,
     EstadoCotizacion,
     Fotografia,
+    HistorialComponente,
     HistorialServicio,
     MedioAprobacion,
+    RegistroTecnico,
     ResultadoAprobacion,
     Servicio,
 )
@@ -207,12 +209,21 @@ class CotizacionSerializer(serializers.ModelSerializer):
             'componente', 'es_bloqueante', 'canal',
         ]
         read_only_fields = [
-            # `es_bloqueante` y `canal` los decide el backend: si el cliente
-            # pudiera escribirlos, podría desbloquearse a sí mismo o atribuir
-            # una respuesta a un canal que no fue ese.
-            'es_bloqueante',
+            # `canal` solo se escribe al registrar la respuesta; la clasificación
+            # `es_bloqueante` sí se define al presentar la cotización.
             'canal',
+            'estado',
+            'total',
         ]
+
+    def validate(self, attrs):
+        if self.instance is not None:
+            attrs.pop('es_bloqueante', None)
+        servicio = attrs.get('servicio') or getattr(self.instance, 'servicio', None)
+        componente = attrs.get('componente')
+        if componente is not None and servicio is not None and componente.servicio_id != servicio.pk:
+            raise serializers.ValidationError('El componente no pertenece al servicio indicado.')
+        return attrs
 
     def get_total(self, obj):
         return str(obj.total)
@@ -250,6 +261,12 @@ class CotizacionSerializer(serializers.ModelSerializer):
         return instance
 
 
+class ReenviarCotizacionSerializer(serializers.Serializer):
+    descripcion = serializers.CharField(required=False, allow_blank=True)
+    observaciones = serializers.CharField(required=False, allow_blank=True)
+    detalles = DetalleCotizacionSerializer(many=True, required=False, default=list)
+
+
 class ServicioSerializer(serializers.ModelSerializer):
     cliente = ClienteSerializer(read_only=True)
     cliente_id = serializers.PrimaryKeyRelatedField(
@@ -279,6 +296,203 @@ class ServicioSerializer(serializers.ModelSerializer):
         por su propia vista (RF-COT-11). Este campo solo informa.
         """
         return resumen_cierre(construir_hoy(obj))
+
+
+class RegistroTecnicoSerializer(serializers.ModelSerializer):
+    creado_por = serializers.SerializerMethodField()
+    actualizado_por = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RegistroTecnico
+        fields = [
+            'id', 'diagnostico', 'trabajo_realizado', 'resultado_pruebas',
+            'recomendaciones', 'observaciones', 'creado_por', 'actualizado_por',
+            'fecha_creacion', 'fecha_actualizacion',
+        ]
+        read_only_fields = [
+            'id', 'creado_por', 'actualizado_por', 'fecha_creacion', 'fecha_actualizacion',
+        ]
+
+    def get_creado_por(self, obj):
+        return obj.creado_por.username if obj.creado_por else None
+
+    def get_actualizado_por(self, obj):
+        return obj.actualizado_por.username if obj.actualizado_por else None
+
+
+class RegistroTecnicoInputSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RegistroTecnico
+        fields = ['diagnostico', 'trabajo_realizado', 'resultado_pruebas', 'recomendaciones', 'observaciones']
+
+
+class FotografiaAdministrativaSerializer(serializers.ModelSerializer):
+    url = serializers.URLField(required=False, allow_blank=True)
+    fecha = serializers.DateTimeField(read_only=True)
+    subida_por = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Fotografia
+        fields = ['id', 'servicio', 'url', 'descripcion', 'tipo', 'visible_cliente', 'fecha', 'subida_por']
+        read_only_fields = ['id', 'servicio', 'fecha', 'subida_por']
+
+    def get_subida_por(self, obj):
+        return obj.subida_por.username if obj.subida_por else None
+
+
+class AprobacionAdministrativaSerializer(AprobacionServicioSerializer):
+    """Representación de lectura estable para una cotización administrativa."""
+
+    class Meta(AprobacionServicioSerializer.Meta):
+        fields = AprobacionServicioSerializer.Meta.fields
+
+
+class CotizacionAdministrativaSerializer(serializers.ModelSerializer):
+    detalles = DetalleCotizacionSerializer(many=True, read_only=True)
+    aprobaciones = AprobacionAdministrativaSerializer(many=True, read_only=True)
+    creada_por = serializers.SerializerMethodField()
+    reemplaza_a = serializers.IntegerField(source='reemplaza_a_id', read_only=True)
+    versiones = serializers.SerializerMethodField()
+    etiqueta_componente = serializers.SerializerMethodField()
+    total = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Cotizacion
+        fields = [
+            'id', 'numero', 'tipo', 'descripcion', 'total', 'estado',
+            'fecha_creacion', 'observaciones', 'creada_por', 'componente',
+            'etiqueta_componente', 'es_bloqueante', 'canal', 'detalles',
+            'aprobaciones', 'reemplaza_a', 'versiones',
+        ]
+
+    def get_creada_por(self, obj):
+        return obj.creada_por.username if obj.creada_por else None
+
+    def get_versiones(self, obj):
+        return [version.id for version in obj.versiones.all()]
+
+    def get_etiqueta_componente(self, obj):
+        return str(obj.componente) if obj.componente_id else 'Cotización del servicio'
+
+    def get_total(self, obj):
+        return str(obj.total)
+
+
+class HistorialComponenteAdministrativoSerializer(serializers.ModelSerializer):
+    usuario = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HistorialComponente
+        fields = [
+            'id', 'estado_anterior', 'estado_nuevo', 'fase_registrada',
+            'comentario', 'fecha', 'usuario',
+        ]
+
+    def get_usuario(self, obj):
+        return obj.usuario.username if obj.usuario else None
+
+
+class ComponenteAdministrativoSerializer(ComponenteSerializer):
+    historial = HistorialComponenteAdministrativoSerializer(many=True, read_only=True)
+    acciones_disponibles = serializers.SerializerMethodField()
+    etiqueta_estado = serializers.CharField(source='get_estado_display', read_only=True)
+    etiqueta_fase = serializers.CharField(source='get_fase_display', read_only=True)
+
+    class Meta(ComponenteSerializer.Meta):
+        fields = ComponenteSerializer.Meta.fields + [
+            'etiqueta_estado', 'etiqueta_fase', 'historial', 'acciones_disponibles',
+        ]
+
+    def get_acciones_disponibles(self, obj):
+        hoy = construir_hoy(obj.servicio)
+        componente = next(c for c in hoy['componentes'] if c['id'] == obj.pk)
+        acciones = []
+        if obj.estado in ESTADOS_FINALIZACION:
+            acciones.append('corregir_finalizacion')
+        else:
+            if not obj.trabajo_iniciado and puede_continuar(hoy, componente):
+                acciones.append('iniciar_trabajo')
+            acciones.append('finalizar_componente')
+        if any(
+            cotizacion.componente_id == obj.pk
+            and cotizacion.estado == EstadoCotizacion.PENDIENTE
+            for cotizacion in obj.servicio.cotizaciones.all()
+        ):
+            acciones.append('responder_cotizacion')
+        return acciones
+
+
+class ServicioResumenAdministrativoSerializer(serializers.ModelSerializer):
+    cliente = serializers.SerializerMethodField()
+    tipo_servicio = serializers.CharField(source='get_tipo_servicio_display', read_only=True)
+    estado = serializers.CharField(source='get_estado_display', read_only=True)
+
+    class Meta:
+        model = Servicio
+        fields = ['id', 'codigo', 'cliente', 'tipo_servicio', 'estado', 'fecha_solicitud']
+
+    def get_cliente(self, obj):
+        return {'nombre': obj.cliente.nombre, 'empresa': obj.cliente.empresa}
+
+
+class ServicioAdministrativoSerializer(serializers.ModelSerializer):
+    cliente = ClienteSerializer(read_only=True)
+    tipo_servicio = serializers.CharField(source='get_tipo_servicio_display', read_only=True)
+    estado = serializers.CharField(source='get_estado_display', read_only=True)
+    componentes = ComponenteAdministrativoSerializer(many=True, read_only=True)
+    cotizaciones = CotizacionAdministrativaSerializer(many=True, read_only=True)
+    historial = HistorialServicioSerializer(many=True, read_only=True)
+    fotografias = FotografiaSerializer(many=True, read_only=True)
+    registro_tecnico = RegistroTecnicoSerializer(read_only=True, allow_null=True)
+    resumen_cierre = serializers.SerializerMethodField()
+    acciones_disponibles = serializers.SerializerMethodField()
+    seguimiento = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Servicio
+        fields = [
+            'id', 'codigo', 'cliente', 'tipo_servicio', 'estado',
+            'descripcion_solicitud', 'entregar_en_banco', 'avisar_para_coordinar',
+            'recoger', 'fecha_solicitud', 'fecha_recepcion', 'fecha_finalizacion',
+            'fecha_entrega', 'observaciones_internas', 'activo', 'componentes',
+            'cotizaciones', 'historial', 'fotografias', 'registro_tecnico',
+            'resumen_cierre', 'acciones_disponibles', 'seguimiento',
+        ]
+        read_only_fields = [field for field in fields if field != 'observaciones_internas']
+
+    def get_resumen_cierre(self, obj):
+        return resumen_cierre(construir_hoy(obj))
+
+    def validate(self, attrs):
+        campos_no_permitidos = set(self.initial_data) - {'observaciones_internas'}
+        if campos_no_permitidos and self.instance is not None:
+            raise serializers.ValidationError(
+                'Solo se pueden actualizar las observaciones internas.'
+            )
+        return attrs
+
+    def get_acciones_disponibles(self, obj):
+        acciones = []
+        if self.get_resumen_cierre(obj)['puede_finalizar']:
+            acciones.append('finalizar_servicio')
+        return acciones
+
+    def get_seguimiento(self, obj):
+        # El token es una credencial: solo se entrega como destino de una acción,
+        # nunca como un campo independiente o texto descriptivo.
+        return {
+            'disponible': bool(obj.activo),
+            'acciones': ['copiar', 'abrir'] if obj.activo else [],
+            'enlace': f'/seguimiento/{obj.token_seguimiento}' if obj.activo else None,
+        }
+
+
+class DashboardAdministrativoSerializer(serializers.Serializer):
+    total_activos = serializers.IntegerField()
+    contadores = serializers.DictField()
+    recientes = ServicioResumenAdministrativoSerializer(many=True)
+    pendientes_atencion = ServicioResumenAdministrativoSerializer(many=True)
+    definicion = serializers.DictField()
 
 
 # ─────────────────────────────────────────────────────────────

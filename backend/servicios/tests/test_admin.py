@@ -50,6 +50,26 @@ class BaseAdminTest(TestCase):
             tipo='Cilindro hidráulico',
         )
 
+    def test_servicio_admin_no_expone_estado_ni_activo_como_campos_editables(self):
+        formulario = self.admin_de_url(self.url_servicio()).get_form(
+            None,
+            self.servicio,
+        )
+        self.assertIn('observaciones_internas', formulario.base_fields)
+        self.assertNotIn('estado', formulario.base_fields)
+        self.assertNotIn('activo', formulario.base_fields)
+
+    def test_post_admin_no_puede_cambiar_estado_directamente(self):
+        estado_original = self.servicio.estado
+        respuesta = self.post_admin(
+            self.url_servicio(), estado='EN_REVISION', activo='0',
+            observaciones_internas='Nota permitida',
+        )
+        self.assertIn(respuesta.status_code, (200, 302))
+        self.servicio.refresh_from_db()
+        self.assertEqual(self.servicio.estado, estado_original)
+        self.assertTrue(self.servicio.activo)
+
     def url_servicio(self):
         return reverse('admin:servicios_servicio_change', args=[self.servicio.pk])
 

@@ -174,6 +174,37 @@ class Servicio(models.Model):
         return self.codigo or f'Servicio #{self.pk}'
 
 
+class RegistroTecnico(models.Model):
+    """Información técnica interna, opcional y única para cada servicio."""
+
+    servicio = models.OneToOneField(
+        Servicio, on_delete=models.CASCADE, related_name='registro_tecnico',
+        verbose_name='Servicio',
+    )
+    diagnostico = models.TextField(blank=True, verbose_name='Diagnóstico')
+    trabajo_realizado = models.TextField(blank=True, verbose_name='Trabajo realizado')
+    resultado_pruebas = models.TextField(blank=True, verbose_name='Resultado de pruebas')
+    recomendaciones = models.TextField(blank=True, verbose_name='Recomendaciones')
+    observaciones = models.TextField(blank=True, verbose_name='Observaciones')
+    creado_por = models.ForeignKey(
+        Usuario, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='registros_tecnicos_creados', verbose_name='Creado por',
+    )
+    actualizado_por = models.ForeignKey(
+        Usuario, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='registros_tecnicos_actualizados', verbose_name='Actualizado por',
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+    fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name='Fecha de actualización')
+
+    class Meta:
+        verbose_name = 'Registro técnico'
+        verbose_name_plural = 'Registros técnicos'
+
+    def __str__(self):
+        return f'Registro técnico — {self.servicio}'
+
+
 class Componente(models.Model):
     servicio = models.ForeignKey(
         Servicio, on_delete=models.CASCADE, related_name='componentes',
@@ -279,6 +310,10 @@ class Cotizacion(models.Model):
     creada_por = models.ForeignKey(
         Usuario, null=True, on_delete=models.SET_NULL, related_name='cotizaciones',
         verbose_name='Creada por',
+    )
+    reemplaza_a = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.PROTECT,
+        related_name='versiones', verbose_name='Reemplaza a',
     )
 
     class Meta:

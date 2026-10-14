@@ -33,14 +33,30 @@ def guardar_fotografias(servicio, archivos):
     """
     creadas = []
     for archivo in archivos or []:
-        nombre = f'fotografias/{uuid.uuid4().hex}_{Path(archivo.name).name}'
-        nombre_guardado = default_storage.save(nombre, archivo)
+        referencia = guardar_fotografia(archivo)
         creadas.append(
             Fotografia.objects.create(
                 servicio=servicio,
-                url=f'{settings.MEDIA_URL}{nombre_guardado}',
+                url=referencia,
                 tipo=TipoFotografia.RECEPCION,
                 visible_cliente=False,
             )
         )
     return creadas
+
+
+def guardar_fotografia(archivo):
+    """Guarda un archivo y devuelve su referencia, sin conocer el proveedor."""
+    nombre = f'fotografias/{uuid.uuid4().hex}_{Path(archivo.name).name}'
+    nombre_guardado = default_storage.save(nombre, archivo)
+    return f'{settings.MEDIA_URL}{nombre_guardado}'
+
+
+def eliminar_referencia(referencia):
+    """Elimina una referencia local; un adaptador futuro puede reemplazar esto."""
+    prefijo = str(settings.MEDIA_URL or '')
+    nombre = referencia[len(prefijo):] if prefijo and referencia.startswith(prefijo) else referencia
+    if not default_storage.exists(nombre):
+        return False
+    default_storage.delete(nombre)
+    return True

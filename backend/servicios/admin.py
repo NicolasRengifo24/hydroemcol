@@ -33,7 +33,6 @@ from .models import (
     Componente,
     Cotizacion,
     DetalleCotizacion,
-    EstadoServicio,
     Fotografia,
     HistorialComponente,
     HistorialServicio,
@@ -247,7 +246,11 @@ class ServicioAdmin(ResumenDeCierre):
     )
     list_filter = ('estado', 'tipo_servicio', 'activo')
     search_fields = ('codigo', 'cliente__nombre', 'cliente__empresa', 'descripcion_solicitud')
-    readonly_fields = ('token_seguimiento', 'fecha_solicitud', 'resumen_actual')
+    readonly_fields = (
+        'cliente', 'tipo_servicio', 'descripcion_solicitud', 'token_seguimiento',
+        'fecha_solicitud', 'resumen_actual', 'estado', 'fecha_recepcion',
+        'fecha_finalizacion', 'fecha_entrega', 'activo',
+    )
     fieldsets = (
         (None, {'fields': (
             'cliente', 'tipo_servicio', 'descripcion_solicitud',
@@ -269,37 +272,6 @@ class ServicioAdmin(ResumenDeCierre):
     @admin.display(description='Componentes')
     def componentes_totales(self, obj):
         return obj.componentes.count()
-
-    def get_form(self, request, obj=None, **kwargs):
-        """Quita `FINALIZADO` de las opciones de estado.
-
-        Los estados del flujo (`en_revision`, `en_reparacion`, ...) sí se ponen a
-        mano: no hay acción de proceso para ellos. `FINALIZADO` es distinto:
-        solo lo escribe la acción de cierre, que comprueba las reglas
-        (RF-COT-11). Si estuviera en la lista, el admin podría saltarse el
-        bloqueo del cierre eligiéndolo en el desplegable.
-        """
-        class ServicioForm(forms.ModelForm):
-            estado = forms.ChoiceField(
-                required=False,
-                choices=[
-                    (estado.value, estado.label)
-                    for estado in EstadoServicio
-                    if estado != EstadoServicio.FINALIZADO
-                ],
-                label='Estado',
-            )
-
-            class Meta:
-                model = Servicio
-                fields = (
-                    'cliente', 'tipo_servicio', 'descripcion_solicitud',
-                    'observaciones_internas', 'activo', 'estado',
-                    'fecha_recepcion', 'fecha_finalizacion', 'fecha_entrega',
-                )
-
-        return ServicioForm
-
 
 # ─────────────────────────────────────────────────────────────
 # Cotización y la respuesta del cliente (T25)
@@ -364,6 +336,15 @@ class CotizacionAdmin(admin.ModelAdmin):
                 )
 
         return CotizacionForm
+
+    def get_readonly_fields(self, request, obj=None):
+        base = list(super().get_readonly_fields(request, obj))
+        if obj is not None and obj.estado != 'PENDIENTE':
+            return tuple(set(base) | {
+                'servicio', 'componente', 'tipo', 'descripcion', 'observaciones',
+                'es_bloqueante', 'numero', 'total', 'estado', 'canal', 'fecha_creacion',
+            })
+        return tuple(base)
 
     def save_model(self, request, obj, form, change):
         respuesta = form.cleaned_data.get('resultado_respuesta')

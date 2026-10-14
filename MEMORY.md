@@ -413,3 +413,17 @@ Channels sigue en esa lista, y por eso el "tiempo real" se pospuso a una decisi�
   tests backend existentes y la compilación/lint del frontend.
 - `docs/deployment.md` documenta variables de producción, HTTPS/proxy, CORS/CSRF, cookies y la
   limitación de `LocMemCache` entre instancias Render. No se añadieron dependencias ni roles.
+
+### 2026-10-13 — Spec 005, T9: verificación y cierre
+
+- Spec 005 completada. Se añadió `backend/servicios/tests/test_t9_verificacion.py` con pruebas
+  `django.test` para autorización administrativa, dashboard/listado/detalle, cotizaciones y
+  versionado, acciones/conflictos, RegistroTecnico y fotografías/visibilidad.
+- Se corrigió en `acciones.py` el reenvío de cotizaciones con componente opcional: PostgreSQL no
+  permite `FOR UPDATE` sobre el lado nullable de un `select_related`; ahora se bloquean
+  explícitamente cotización, servicio y componente.
+- Verificación final: `manage.py check`, `makemigrations --check`, `manage.py test --noinput`
+  (273 tests), `npm run build`, `npm run lint` y `git diff --check` pasan. `node --test` no
+  encontró pruebas JavaScript (0 tests).
+- La verificación visual con Chrome DevTools no estuvo disponible en esta sesión; no se declara
+  validación visual de escritorio ni de viewport móvil.

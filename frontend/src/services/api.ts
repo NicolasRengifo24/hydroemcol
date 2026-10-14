@@ -9,7 +9,11 @@ export interface CredencialesInicio {
   password: string
 }
 
-type ErrorApi = Error & { status: number; data: unknown }
+export type ErrorApi = Error & {
+  status: number
+  data: unknown
+  requiereRecarga?: boolean
+}
 type OyenteSesion = (estado: EstadoSesion) => void
 type RequestOptionsInternas = RequestOptions & { _reintentoSesion?: boolean }
 
@@ -189,6 +193,7 @@ export async function apiRequest<T = unknown>(
     const error = new Error('API error') as ErrorApi
     error.status = res.status
     error.data = data
+    error.requiereRecarga = res.status === 409
 
     if (res.status === 401 && !rutasSinRenovacion.has(ruta) && !esReintento) {
       const nuevoAccess = await refrescarSesion()
@@ -205,3 +210,372 @@ export async function apiRequest<T = unknown>(
   if (ct.includes('application/json')) return (await res.json()) as T
   return (await res.text()) as unknown as T
 }
+
+// Tipos administrativos. Los códigos de estado pertenecen al backend; las
+// etiquetas legibles que devuelve la API se conservan como texto.
+export type CodigoEstadoServicio =
+  | 'SOLICITADO'
+  | 'EN_REVISION'
+  | 'COTIZANDO'
+  | 'ESPERANDO_APROBACION'
+  | 'EN_REPARACION'
+  | 'EN_PRUEBAS'
+  | 'FINALIZADO'
+  | 'LISTO_PARA_ENTREGA'
+  | 'ENTREGADO'
+  | 'NO_APROBADO'
+  | 'CANCELADO'
+
+export type TipoServicio = 'DIAGNOSTICO' | 'REPARACION' | 'MANTENIMIENTO' | 'PRUEBA' | 'OTRO'
+export type TipoCotizacion = 'INICIAL' | 'ADICIONAL'
+export type EstadoCotizacion = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA'
+export type ResultadoAprobacion = 'APROBADA' | 'RECHAZADA'
+export type MedioAprobacion = 'WEB' | 'WHATSAPP' | 'LLAMADA' | 'PRESENCIAL' | 'OTRO'
+export type CanalCotizacion = 'WEB' | 'WHATSAPP' | ''
+export type MotivoFinalizacion = 'FINALIZADO_POR_CLIENTE' | 'FINALIZADO_POR_TECNICO'
+
+export interface ClienteAdministrativo {
+  id: number
+  nombre: string
+  empresa: string
+  telefono: string
+  whatsapp: string
+  email: string
+  direccion: string
+  ciudad: string
+  fecha_creacion: string
+}
+
+export interface ComponenteAdministrativo {
+  id: number
+  servicio: number
+  tipo: string
+  marca: string
+  referencia: string
+  descripcion: string
+  cantidad: number
+  estado: string
+  fase: string
+  trabajo_iniciado: boolean
+  fecha_inicio_trabajo: string | null
+  fecha_finalizacion: string | null
+  motivo_finalizacion: string
+  puede_continuar: boolean
+  motivo_bloqueo: string | null
+  etiqueta_estado?: string
+  etiqueta_fase?: string
+  historial?: HistorialComponente[]
+  acciones_disponibles?: string[]
+}
+
+export interface HistorialComponente {
+  id: number
+  estado_anterior: string
+  estado_nuevo: string
+  fase_registrada: string
+  comentario: string
+  fecha: string
+  usuario: string | null
+}
+
+export interface DetalleCotizacion {
+  id?: number
+  descripcion: string
+  valor: string | number
+  cantidad: number
+}
+
+export interface AprobacionServicio {
+  id: number
+  cotizacion: number
+  resultado: ResultadoAprobacion
+  medio: MedioAprobacion
+  fecha: string
+  usuario_registro: string | null
+  observacion: string
+  ip: string | null
+  fecha_registro: string
+}
+
+export interface CotizacionAdministrativa {
+  id: number
+  servicio?: number
+  numero: string
+  tipo: TipoCotizacion
+  descripcion: string
+  total: string
+  estado: EstadoCotizacion
+  fecha_creacion: string
+  observaciones: string
+  creada_por: string | null
+  componente: number | null
+  etiqueta_componente: string
+  es_bloqueante: boolean
+  canal: CanalCotizacion
+  detalles: DetalleCotizacion[]
+  aprobaciones: AprobacionServicio[]
+  reemplaza_a: number | null
+  versiones: number[]
+}
+
+export interface HistorialServicio {
+  id: number
+  servicio: number
+  estado: CodigoEstadoServicio | string
+  comentario: string
+  fecha: string
+  usuario: string | null
+  visible_cliente: boolean
+}
+
+export type TipoFotografia = 'RECEPCION' | 'DIAGNOSTICO' | 'REPARACION' | 'PRUEBA' | 'OTRO'
+
+export interface Fotografia {
+  id: number
+  servicio: number
+  url: string
+  descripcion: string
+  tipo: TipoFotografia | string
+  visible_cliente: boolean
+  fecha: string
+  subida_por: string | null
+}
+
+export interface RegistroTecnico {
+  id: number
+  diagnostico: string
+  trabajo_realizado: string
+  resultado_pruebas: string
+  recomendaciones: string
+  observaciones: string
+  creado_por: string | null
+  actualizado_por: string | null
+  fecha_creacion: string
+  fecha_actualizacion: string
+}
+
+export interface ServicioResumenAdministrativo {
+  id: number
+  codigo: string
+  cliente: { nombre: string; empresa: string }
+  tipo_servicio: string
+  estado: string
+  fecha_solicitud: string
+}
+
+export interface ResumenCierre {
+  puede_finalizar: boolean
+  motivo: string
+  [clave: string]: unknown
+}
+
+export interface SeguimientoAdministrativo {
+  disponible: boolean
+  acciones: Array<'copiar' | 'abrir'>
+  enlace: string | null
+}
+
+export interface ServicioAdministrativo extends ServicioResumenAdministrativo {
+  cliente: ClienteAdministrativo
+  descripcion_solicitud: string
+  entregar_en_banco: boolean
+  avisar_para_coordinar: boolean
+  recoger: boolean
+  fecha_recepcion: string | null
+  fecha_finalizacion: string | null
+  fecha_entrega: string | null
+  observaciones_internas: string
+  activo: boolean
+  componentes: ComponenteAdministrativo[]
+  cotizaciones: CotizacionAdministrativa[]
+  historial: HistorialServicio[]
+  fotografias: Fotografia[]
+  registro_tecnico: RegistroTecnico | null
+  resumen_cierre: ResumenCierre
+  acciones_disponibles: string[]
+  seguimiento: SeguimientoAdministrativo
+}
+
+export interface DashboardAdministrativo {
+  total_activos: number
+  contadores: Partial<Record<CodigoEstadoServicio, number>> & Record<string, number>
+  recientes: ServicioResumenAdministrativo[]
+  pendientes_atencion: ServicioResumenAdministrativo[]
+  definicion: Record<string, string>
+}
+
+export interface ListadoServiciosAdministrativo {
+  count: number
+  next: string | null
+  previous: string | null
+  page: number
+  page_size: 20
+  results: ServicioResumenAdministrativo[]
+}
+
+export interface ParametrosListadoServicios {
+  search?: string
+  estado?: CodigoEstadoServicio
+  page?: number
+  ordering?: 'fecha_solicitud' | '-fecha_solicitud' | 'codigo' | '-codigo' | 'estado' | '-estado' | 'cliente' | '-cliente' | 'empresa' | '-empresa'
+}
+
+export interface DatosComponente {
+  tipo: string
+  marca?: string
+  referencia?: string
+  descripcion?: string
+  cantidad?: number
+}
+
+export interface DatosCotizacion {
+  servicio: number
+  componente?: number | null
+  tipo: TipoCotizacion
+  descripcion?: string
+  observaciones?: string
+  es_bloqueante: boolean
+  detalles: DetalleCotizacion[]
+}
+
+export interface DatosReenvioCotizacion {
+  descripcion?: string
+  observaciones?: string
+  detalles?: DetalleCotizacion[]
+}
+
+export interface DatosAprobacionExterna {
+  resultado: ResultadoAprobacion
+  medio: Exclude<MedioAprobacion, 'WEB'>
+  fecha?: string
+  observacion?: string
+}
+
+export interface DatosRegistroTecnico {
+  diagnostico?: string
+  trabajo_realizado?: string
+  resultado_pruebas?: string
+  recomendaciones?: string
+  observaciones?: string
+}
+
+export interface DatosFotografia {
+  url: string
+  descripcion?: string
+  tipo: TipoFotografia
+  visible_cliente?: boolean
+}
+
+export interface AccionFinalizarComponente {
+  motivo: MotivoFinalizacion
+}
+
+export interface AccionCorregirFinalizacion {
+  nuevo_estado: string
+  comentario?: string
+}
+
+export interface RespuestaCotizacion {
+  cotizacion_id: number
+  resultado: ResultadoAprobacion
+  canal: Exclude<CanalCotizacion, ''>
+  observacion?: string
+}
+
+export const clavesAdministrativas = {
+  todas: ['administrativo'] as const,
+  dashboard: () => [...clavesAdministrativas.todas, 'dashboard'] as const,
+  servicios: (parametros: ParametrosListadoServicios = {}) =>
+    [...clavesAdministrativas.todas, 'servicios', {
+      search: parametros.search ?? '',
+      estado: parametros.estado ?? '',
+      page: parametros.page ?? 1,
+      ordering: parametros.ordering ?? '-fecha_solicitud',
+    }] as const,
+  servicio: (id: number) => [...clavesAdministrativas.todas, 'servicio', id] as const,
+}
+
+function construirQuery(parametros: ParametrosListadoServicios): string {
+  const query = new URLSearchParams()
+  if (parametros.search) query.set('search', parametros.search)
+  if (parametros.estado) query.set('estado', parametros.estado)
+  if (parametros.page && parametros.page > 1) query.set('page', String(parametros.page))
+  if (parametros.ordering && parametros.ordering !== '-fecha_solicitud') query.set('ordering', parametros.ordering)
+  const texto = query.toString()
+  return texto ? `?${texto}` : ''
+}
+
+export const obtenerDashboardAdministrativo = () =>
+  apiRequest<DashboardAdministrativo>('/api/admin/dashboard/')
+
+export const listarServiciosAdministrativos = (parametros: ParametrosListadoServicios = {}) =>
+  apiRequest<ListadoServiciosAdministrativo>(`/api/servicios/${construirQuery(parametros)}`)
+
+export const obtenerServicioAdministrativo = (id: number) =>
+  apiRequest<ServicioAdministrativo>(`/api/servicios/${id}/`)
+
+async function enviar<T>(endpoint: string, method: string, body?: unknown): Promise<T> {
+  return apiRequest<T>(endpoint, { method, body: body === undefined ? undefined : JSON.stringify(body) })
+}
+
+export const actualizarObservacionesServicio = (id: number, observaciones_internas: string) =>
+  enviar<ServicioAdministrativo>(`/api/servicios/${id}/`, 'PATCH', { observaciones_internas })
+
+export const crearComponente = (servicioId: number, datos: DatosComponente) =>
+  enviar<ComponenteAdministrativo>(`/api/servicios/${servicioId}/componentes/`, 'POST', datos)
+
+export const actualizarComponente = (servicioId: number, componenteId: number, datos: DatosComponente) =>
+  enviar<ComponenteAdministrativo>(`/api/servicios/${servicioId}/componentes/${componenteId}/`, 'PATCH', datos)
+
+export const eliminarComponente = (servicioId: number, componenteId: number) =>
+  enviar<void>(`/api/servicios/${servicioId}/componentes/${componenteId}/`, 'DELETE')
+
+export const responderCotizacion = (servicioId: number, componenteId: number, datos: RespuestaCotizacion) =>
+  enviar<AprobacionServicio>(`/api/servicios/${servicioId}/componentes/${componenteId}/respuesta/`, 'POST', datos)
+
+export const iniciarTrabajo = (servicioId: number, componenteId: number) =>
+  enviar<ComponenteAdministrativo>(`/api/servicios/${servicioId}/componentes/${componenteId}/iniciar-trabajo/`, 'POST')
+
+export const finalizarComponente = (servicioId: number, componenteId: number, datos: AccionFinalizarComponente) =>
+  enviar<ComponenteAdministrativo>(`/api/servicios/${servicioId}/componentes/${componenteId}/finalizar/`, 'POST', datos)
+
+export const corregirFinalizacion = (servicioId: number, componenteId: number, datos: AccionCorregirFinalizacion) =>
+  enviar<ComponenteAdministrativo>(`/api/servicios/${servicioId}/componentes/${componenteId}/corregir-finalizacion/`, 'POST', datos)
+
+export const finalizarServicio = (servicioId: number) =>
+  enviar<ServicioAdministrativo>(`/api/servicios/${servicioId}/finalizar/`, 'POST')
+
+export const desactivarServicio = (servicioId: number) =>
+  enviar<ServicioAdministrativo>(`/api/servicios/${servicioId}/desactivar/`, 'POST')
+
+export const crearCotizacion = (datos: DatosCotizacion) =>
+  enviar<CotizacionAdministrativa>('/api/cotizaciones/', 'POST', datos)
+
+export const actualizarCotizacion = (id: number, datos: Partial<DatosCotizacion>) =>
+  enviar<CotizacionAdministrativa>(`/api/cotizaciones/${id}/`, 'PATCH', datos)
+
+export const reenviarCotizacion = (id: number, datos: DatosReenvioCotizacion) =>
+  enviar<CotizacionAdministrativa>(`/api/cotizaciones/${id}/reenviar/`, 'POST', datos)
+
+export const registrarAprobacionExterna = (cotizacionId: number, datos: DatosAprobacionExterna) =>
+  enviar<AprobacionServicio>(`/api/cotizaciones/${cotizacionId}/aprobaciones/`, 'POST', datos)
+
+// Estos contratos quedan listos para los endpoints de T8; no alteran la sesión
+// y mantienen el mismo adaptador HTTP cuando esas rutas estén disponibles.
+export const crearRegistroTecnico = (servicioId: number, datos: DatosRegistroTecnico) =>
+  enviar<RegistroTecnico>(`/api/servicios/${servicioId}/registro-tecnico/`, 'POST', datos)
+
+export const actualizarRegistroTecnico = (servicioId: number, datos: DatosRegistroTecnico) =>
+  enviar<RegistroTecnico>(`/api/servicios/${servicioId}/registro-tecnico/`, 'PATCH', datos)
+
+export const crearFotografia = (servicioId: number, datos: DatosFotografia | FormData) =>
+  apiRequest<Fotografia>(`/api/servicios/${servicioId}/fotografias/`, {
+    method: 'POST',
+    body: datos instanceof FormData ? datos : JSON.stringify(datos),
+  })
+
+export const actualizarFotografia = (servicioId: number, fotografiaId: number, datos: Partial<DatosFotografia>) =>
+  enviar<Fotografia>(`/api/servicios/${servicioId}/fotografias/${fotografiaId}/`, 'PATCH', datos)
+
+export const eliminarFotografia = (servicioId: number, fotografiaId: number) =>
+  enviar<void>(`/api/servicios/${servicioId}/fotografias/${fotografiaId}/`, 'DELETE')

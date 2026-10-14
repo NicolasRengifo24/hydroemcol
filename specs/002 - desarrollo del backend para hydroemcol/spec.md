@@ -285,6 +285,8 @@ administrativo necesita ver en pantalla, no una condición independiente.
 | D-8 | Los estados de finalización son corregibles por **error humano**, con rastro. | Un cierre mal registrado debe poder corregirse. |
 | D-9 | La respuesta del cliente se registra con canal, responsable y fecha; **sin** referencia ni archivo adjunto. | El registro por WhatsApp es la vía real de la empresa. |
 | D-10 | El valor de la mano de obra **no** lo define el sistema; lo acuerda el técnico con el cliente por WhatsApp. | El sistema no tiene información para calcularlo. |
+| D-13 | Prevalece **RF-COT-15** sobre la exclusión de "La vista de seguimiento del cliente" de §7: el seguimiento ya existente expone el `estado` y la `fase` de cada componente como etiqueta en español. | §7 excluye construir o ampliar la vista completa de seguimiento, no impedir exponer el estado y la fase del componente en el seguimiento que ya existe. La implementación (`ComponentePublicoSerializer`) sigue RF-COT-15 y oculta los campos de control interno. |
+| D-14 | En `backend/servicios/reglas.py` el resto de las funciones son puras; `estados_cerrados()` y `tiene_solicitud_en_curso()` son la **excepción heredada** de la especificación 001 (RF-8.1), porque sí consultan la base de datos, y se mantienen por compatibilidad. | Se documenta la excepción en lugar de refactorizarla. Si en el futuro se desea, esas dos funciones pueden moverse a un módulo con acceso a datos. |
 
 ## 10. Dudas abiertas
 
