@@ -19,14 +19,8 @@ from django.utils.html import format_html
 from django.utils.http import unquote
 
 from .acciones import ErrorDeAccion, resumen_de_cierre
-from .acciones import (
-    corregir_finalizacion,
-    finalizar_componente,
-    finalizar_servicio,
-    iniciar_trabajo,
-    registrar_respuesta,
-)
-from .estados import ESTADOS_FINALIZACION, CanalRespuesta, EstadoComponente
+from .acciones import cambiar_estado_componente, finalizar_servicio, registrar_respuesta
+from .estados import CanalRespuesta, EstadoComponente
 from .models import (
     AprobacionServicio,
     Cliente,
@@ -65,34 +59,25 @@ def _opciones(estados):
 class ComponenteInline(admin.TabularInline):
     """Componentes del servicio con su estado y si pueden avanzar (T24).
 
-    Las cuatro columnas de T24 (`estado`, `trabajo_iniciado`, `puede_continuar`
-    y `motivo`) son de solo lectura: informan, no se editan aquí. Editar el
+    Las columnas de estado y trabajo son de solo lectura: informan, no se editan aquí. Editar el
     estado desde el inline sería la vía más corta para saltarse RF-COT-09.
     """
 
     model = Componente
     extra = 0
-    fields = (
-        'tipo', 'marca', 'referencia', 'descripcion', 'cantidad',
-        'estado', 'trabajo_iniciado', 'puede_continuar', 'motivo_bloqueo',
-        'ver_en_detalle',
-    )
+    fields = ('tipo', 'marca', 'referencia', 'descripcion', 'cantidad',
+              'estado', 'trabajo_iniciado', 'motivo_espera', 'ver_en_detalle')
     readonly_fields = (
-        'estado', 'trabajo_iniciado', 'puede_continuar', 'motivo_bloqueo',
+        'estado', 'trabajo_iniciado', 'motivo_espera',
         'ver_en_detalle',
     )
     fieldsets = None
     show_change_link = True
 
-    @admin.display(description='Puede continuar')
-    def puede_continuar(self, obj):
+    @admin.display(description='Motivo de espera')
+    def motivo_espera(self, obj):
         from .serializers import ComponenteSerializer
-        return ComponenteSerializer(obj).data['puede_continuar']
-
-    @admin.display(description='Motivo del bloqueo')
-    def motivo_bloqueo(self, obj):
-        from .serializers import ComponenteSerializer
-        return ComponenteSerializer(obj).data['motivo_bloqueo'] or '—'
+        return ComponenteSerializer(obj).data['motivo_espera'] or '—'
 
     @admin.display(description='Acciones')
     def ver_en_detalle(self, obj):
@@ -423,7 +408,7 @@ class CotizacionAdmin(admin.ModelAdmin):
 
 @admin.register(Componente)
 class ComponenteAdmin(admin.ModelAdmin):
-    """Ficha del componente con sus tres acciones de proceso (T26).
+    """Ficha del componente con las acciones del catálogo nuevo.
 
     Estado, fase, trabajo y fechas son de solo lectura (T24). Las acciones
     llamar a `acciones.py`, que vuelve a validar. El botón se muestra solo si la
@@ -433,7 +418,7 @@ class ComponenteAdmin(admin.ModelAdmin):
 
     list_display = (
         'tipo', 'servicio', 'estado', 'trabajo_iniciado',
-        'puede_continuar', 'motivo_bloqueo', 'fecha_finalizacion',
+        'motivo_espera', 'fecha_finalizacion',
     )
     list_filter = ('estado', 'fase', 'trabajo_iniciado', 'tipo', 'servicio')
     search_fields = ('tipo', 'marca', 'referencia', 'descripcion', 'servicio__codigo', 'servicio__cliente__nombre')
@@ -443,19 +428,13 @@ class ComponenteAdmin(admin.ModelAdmin):
     def trabajo_iniciado(self, obj):
         return obj.trabajo_iniciado
 
-    @admin.display(description='Puede continuar')
-    def puede_continuar(self, obj):
+    @admin.display(description='Motivo de espera')
+    def motivo_espera(self, obj):
         from .serializers import ComponenteSerializer
-        return ComponenteSerializer(obj).data['puede_continuar']
-
-    @admin.display(description='Motivo del bloqueo')
-    def motivo_bloqueo(self, obj):
-        from .serializers import ComponenteSerializer
-        return ComponenteSerializer(obj).data['motivo_bloqueo'] or '—'
+        return ComponenteSerializer(obj).data['motivo_espera'] or '—'
 
     # Campos de la acción de proceso (T26). No son columnas del modelo.
     accion = None
-    motivo_finalizacion_accion = None
     nuevo_estado = None
     comentario_accion = None
 
@@ -468,18 +447,18 @@ class ComponenteAdmin(admin.ModelAdmin):
             ('Estado (solo lectura)', {'fields': (
                 'estado', 'fase', 'trabajo_iniciado', 'fecha_inicio_trabajo',
                 'fecha_finalizacion', 'motivo_finalizacion',
-                'puede_continuar', 'motivo_bloqueo',
+                'motivo_espera',
             ), 'description': (
                 'Estos valores los decide el backend a través de las acciones. '
                 'No se editan a mano para que quede siempre el rastro en el '
                 'historial.'
             )}),
             ('Acción de proceso', {'description': (
-                'Iniciar el desmontaje, finalizar el componente o corregir un '
-                'cierre mal registrado. El botón se habilita solo si la acción '
+                'Cambiar el estado del componente o corregir un cierre mal '
+                'registrado. El botón se habilita solo si la acción '
                 'tiene sentido ahora, pero al guardar el backend vuelve a '
                 'comprobarlo.'
-            ), 'fields': ('accion', 'motivo_finalizacion_accion', 'nuevo_estado', 'comentario_accion')}),
+             ), 'fields': ('accion', 'nuevo_estado', 'comentario_accion')}),
         )
 
     def get_readonly_fields(self, request, obj=None):
@@ -488,7 +467,7 @@ class ComponenteAdmin(admin.ModelAdmin):
         return (
             'estado', 'fase', 'trabajo_iniciado', 'fecha_inicio_trabajo',
             'fecha_finalizacion', 'motivo_finalizacion',
-            'puede_continuar', 'motivo_bloqueo',
+            'motivo_espera',
         )
 
     def get_form(self, request, obj=None, **kwargs):
@@ -497,16 +476,9 @@ class ComponenteAdmin(admin.ModelAdmin):
                 required=False,
                 choices=[
                     ('', '— sin acción —'),
-                    ('iniciar_trabajo', 'Iniciar desmontaje'),
-                    ('finalizar', 'Finalizar componente'),
-                    ('corregir', 'Corregir finalización'),
+                    ('cambiar_estado', 'Cambiar estado'),
                 ],
                 label='Acción',
-            )
-            motivo_finalizacion_accion = forms.ChoiceField(
-                required=False,
-                choices=[('', '— elija —')] + _opciones(ESTADOS_FINALIZACION),
-                label='Motivo de finalización',
             )
             nuevo_estado = forms.ChoiceField(
                 required=False,
@@ -551,29 +523,7 @@ class ComponenteAdmin(admin.ModelAdmin):
             return
         servicio = obj.servicio
         try:
-            if accion == 'iniciar_trabajo':
-                iniciar_trabajo(
-                    servicio=servicio, componente_id=obj.pk, usuario=request.user,
-                )
-                self.message_user(
-                    request, 'Desmontaje iniciado.', level=messages.SUCCESS,
-                )
-            elif accion == 'finalizar':
-                motivo = form.cleaned_data.get('motivo_finalizacion_accion')
-                if not motivo:
-                    self.message_user(
-                        request, 'El motivo de finalización es obligatorio.',
-                        level=messages.ERROR,
-                    )
-                    return
-                finalizar_componente(
-                    servicio=servicio, componente_id=obj.pk, motivo=motivo,
-                    usuario=request.user,
-                )
-                self.message_user(
-                    request, 'Componente finalizado.', level=messages.SUCCESS,
-                )
-            elif accion == 'corregir':
+            if accion == 'cambiar_estado':
                 nuevo = form.cleaned_data.get('nuevo_estado')
                 if not nuevo:
                     self.message_user(
@@ -581,13 +531,13 @@ class ComponenteAdmin(admin.ModelAdmin):
                         level=messages.ERROR,
                     )
                     return
-                corregir_finalizacion(
+                cambiar_estado_componente(
                     servicio=servicio, componente_id=obj.pk, nuevo_estado=nuevo,
                     comentario=form.cleaned_data.get('comentario_accion', ''),
                     usuario=request.user,
                 )
                 self.message_user(
-                    request, 'Corrección registrada.', level=messages.SUCCESS,
+                    request, 'Cambio de estado registrado.', level=messages.SUCCESS,
                 )
         except ErrorDeAccion as error:
             self.message_user(request, error.detalle, level=messages.ERROR)

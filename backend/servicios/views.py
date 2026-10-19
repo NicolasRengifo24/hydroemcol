@@ -14,10 +14,9 @@ from rest_framework.views import APIView
 
 from .acciones import (
     ErrorDeAccion,
-    corregir_finalizacion,
-    finalizar_componente,
+    cambiar_estado_componente,
     finalizar_servicio,
-    iniciar_trabajo,
+    cancelar_servicio,
     registrar_respuesta,
     crear_cotizacion,
     editar_cotizacion,
@@ -48,11 +47,13 @@ from .serializers import (
     AprobacionCreateSerializer,
     AprobacionServicioSerializer,
     AprobacionWebSerializer,
+    CambiarEstadoComponenteInputSerializer,
+    CancelarServicioInputSerializer,
+    FinalizarServicioInputSerializer,
     ClienteSerializer,
+    ComponenteAdministrativoSerializer,
     ComponenteSerializer,
-    CorregirFinalizacionInputSerializer,
     CotizacionSerializer,
-    FinalizarComponenteInputSerializer,
     FotografiaSerializer,
     HistorialServicioSerializer,
     RespuestaCotizacionInputSerializer,
@@ -119,6 +120,9 @@ class ServicioViewSet(viewsets.ModelViewSet):
         queryset = self.queryset
         if self.action == 'list':
             queryset = queryset.filter(activo=True)
+            # Los servicios cancelados salen de los listados operativos
+            # (RF-EST-13) pero siguen consultables por su detalle.
+            queryset = queryset.exclude(estado=EstadoServicio.CANCELADO)
             queryset = _filtrar_servicios(queryset, self.request)
         if self.action == 'retrieve':
             queryset = _optimizar_detalle(queryset)
@@ -502,68 +506,25 @@ class RespuestaCotizacionView(_AccionDeComponente):
         )
 
 
-class IniciarTrabajoView(_AccionDeComponente):
-    """Registra el inicio del trabajo de un componente (RF-COT-08).
+class CambiarEstadoComponenteView(_AccionDeComponente):
+    """Cambia el estado operativo de un componente (RF-EST-03..08).
 
-    Es donde el backend aplica RF-COT-04: aunque el botón de la interfaz esté
-    deshabilitado, la API es la que rechaza el inicio si el componente tiene
-    una cotización bloqueante sin resolver.
+    La vista no decide: valida la entrada, delega en `acciones.py` y traduce
+    el resultado a HTTP, igual que las demás acciones administrativas. Los
+    estados derivados (APROBADO, RECHAZADO, RECHAZADO_BLOQUEANTE) los rechaza
+    la acción con 400 (CL-03), y el bloqueo por cotización con 409.
     """
 
     def post(self, request, servicio_pk, componente_pk):
-        try:
-            componente = iniciar_trabajo(
-                servicio=self.get_servicio(servicio_pk),
-                componente_id=componente_pk,
-                usuario=request.user,
-            )
-        except ErrorDeAccion as error:
-            return Response(
-                {'detail': error.detalle}, status=error.codigo,
-            )
-
-        return Response(
-            ComponenteSerializer(componente).data, status=status.HTTP_200_OK,
-        )
-
-
-class FinalizarComponenteView(_AccionDeComponente):
-    """Finaliza un componente con su motivo (RF-COT-09)."""
-
-    def post(self, request, servicio_pk, componente_pk):
-        serializer = FinalizarComponenteInputSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        try:
-            componente = finalizar_componente(
-                servicio=self.get_servicio(servicio_pk),
-                componente_id=componente_pk,
-                motivo=serializer.validated_data['motivo'],
-                usuario=request.user,
-            )
-        except ErrorDeAccion as error:
-            return Response(
-                {'detail': error.detalle}, status=error.codigo,
-            )
-
-        return Response(
-            ComponenteSerializer(componente).data, status=status.HTTP_200_OK,
-        )
-
-
-class CorregirFinalizacionView(_AccionDeComponente):
-    """Corrige un cierre mal registrado (RF-COT-10)."""
-
-    def post(self, request, servicio_pk, componente_pk):
-        serializer = CorregirFinalizacionInputSerializer(data=request.data)
+        serializer = CambiarEstadoComponenteInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         datos = serializer.validated_data
 
         try:
-            componente = corregir_finalizacion(
+            componente = cambiar_estado_componente(
                 servicio=self.get_servicio(servicio_pk),
                 componente_id=componente_pk,
-                nuevo_estado=datos['nuevo_estado'],
+                nuevo_estado=datos['estado'],
                 comentario=datos.get('comentario', ''),
                 usuario=request.user,
             )
@@ -573,7 +534,8 @@ class CorregirFinalizacionView(_AccionDeComponente):
             )
 
         return Response(
-            ComponenteSerializer(componente).data, status=status.HTTP_200_OK,
+            ComponenteAdministrativoSerializer(componente).data,
+            status=status.HTTP_200_OK,
         )
 
 
@@ -593,8 +555,13 @@ class FinalizarServicioView(APIView):
 
     def post(self, request, servicio_pk):
         servicio = get_object_or_404(Servicio, pk=servicio_pk)
+        serializer = FinalizarServicioInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         try:
-            finalizar_servicio(servicio=servicio, usuario=request.user)
+            servicio = finalizar_servicio(
+                servicio=servicio, comentario=serializer.validated_data.get('comentario', ''),
+                usuario=request.user,
+            )
         except ErrorDeAccion as error:
             return Response(
                 {'detail': error.detalle, **error.extra},
@@ -602,7 +569,33 @@ class FinalizarServicioView(APIView):
             )
 
         return Response(
-            ServicioSerializer(servicio).data, status=status.HTTP_200_OK,
+            ServicioAdministrativoSerializer(servicio).data, status=status.HTTP_200_OK,
+        )
+
+
+class CancelarServicioView(APIView):
+    """Cancela explícitamente un servicio activo (RF-FLU-10)."""
+    permission_classes = [EsAdministrativo]
+
+    def post(self, request, servicio_pk):
+        servicio = get_object_or_404(Servicio, pk=servicio_pk)
+        serializer = CancelarServicioInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            servicio = cancelar_servicio(
+                servicio=servicio,
+                comentario=serializer.validated_data['comentario'],
+                usuario=request.user,
+            )
+        except ErrorDeAccion as error:
+            return Response(
+                {'detail': error.detalle, **error.extra},
+                status=error.codigo,
+            )
+
+        return Response(
+            ServicioAdministrativoSerializer(servicio).data,
+            status=status.HTTP_200_OK,
         )
 
 
@@ -691,7 +684,11 @@ class DashboardAdministrativoView(APIView):
     permission_classes = [EsAdministrativo]
 
     def get(self, request):
-        activos = Servicio.objects.filter(activo=True).select_related('cliente')
+        activos = (
+            Servicio.objects.filter(activo=True)
+            .exclude(estado=EstadoServicio.CANCELADO)
+            .select_related('cliente')
+        )
         contadores = {
             estado: activos.filter(estado=estado).count()
             for estado, _ in EstadoServicio.choices
@@ -699,18 +696,8 @@ class DashboardAdministrativoView(APIView):
         pendientes = activos.filter(
             Q(estado__in=[
                 EstadoServicio.SOLICITADO,
-                EstadoServicio.EN_REVISION,
-                EstadoServicio.ESPERANDO_APROBACION,
             ])
-            | Q(componentes__estado='RECHAZADO_BLOQUEANTE')
-            | Q(
-                componentes__cotizaciones__es_bloqueante=True,
-                componentes__cotizaciones__estado=EstadoCotizacion.PENDIENTE,
-            )
-            | Q(
-                componentes__cotizaciones__es_bloqueante=True,
-                componentes__cotizaciones__estado=EstadoCotizacion.RECHAZADA,
-            )
+            | Q(componentes__estado='ESPERANDO_APROBACION')
         ).distinct().order_by('-fecha_solicitud')
         recientes = activos.order_by('-fecha_solicitud')[:10]
         datos = {
@@ -721,8 +708,7 @@ class DashboardAdministrativoView(APIView):
             'definicion': {
                 'recientes': 'Últimos 10 servicios activos por fecha_solicitud descendente.',
                 'pendientes_atencion': (
-                    'Servicios activos solicitados, en revisión, esperando aprobación o '
-                    'con un componente detenido por cotización bloqueante pendiente o rechazada.'
+                    'Servicios solicitados o con un componente esperando aprobación.'
                 ),
             },
         }
@@ -742,7 +728,11 @@ class SeguimientoView(generics.RetrieveAPIView):
     lookup_url_kwarg = 'token'
 
     def get_queryset(self):
-        return Servicio.objects.filter(activo=True)
+        # El seguimiento público ordinario no expone servicios cancelados
+        # (RF-EST-13), coherente con el listado y el dashboard.
+        return Servicio.objects.filter(activo=True).exclude(
+            estado=EstadoServicio.CANCELADO
+        )
 
 
 class SeguimientoAprobarView(APIView):
@@ -755,7 +745,8 @@ class SeguimientoAprobarView(APIView):
 
     def post(self, request, token):
         servicio = get_object_or_404(
-            Servicio, token_seguimiento=token, activo=True
+            Servicio.objects.exclude(estado=EstadoServicio.CANCELADO),
+            token_seguimiento=token, activo=True,
         )
         serializer = AprobacionWebSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

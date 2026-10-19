@@ -24,16 +24,15 @@ class TipoServicio(models.TextChoices):
 
 
 class EstadoServicio(models.TextChoices):
+    """Catálogo cerrado de la spec 008 (§4, RF-FLU-01): cuatro valores.
+
+    El avance detallado se lee en los estados de los componentes
+    (RF-FLU-02), no en estados intermedios del servicio.
+    """
+
     SOLICITADO = 'SOLICITADO', 'Solicitado'
-    EN_REVISION = 'EN_REVISION', 'En revisión'
-    COTIZANDO = 'COTIZANDO', 'Cotizando'
-    ESPERANDO_APROBACION = 'ESPERANDO_APROBACION', 'Esperando aprobación'
-    EN_REPARACION = 'EN_REPARACION', 'En reparación'
-    EN_PRUEBAS = 'EN_PRUEBAS', 'En pruebas'
+    EN_CURSO = 'EN_CURSO', 'En curso'
     FINALIZADO = 'FINALIZADO', 'Finalizado'
-    LISTO_PARA_ENTREGA = 'LISTO_PARA_ENTREGA', 'Listo para entrega'
-    ENTREGADO = 'ENTREGADO', 'Entregado'
-    NO_APROBADO = 'NO_APROBADO', 'No aprobado'
     CANCELADO = 'CANCELADO', 'Cancelado'
 
 
@@ -243,12 +242,10 @@ class Componente(models.Model):
     fecha_finalizacion = models.DateTimeField(
         null=True, blank=True, verbose_name='Fecha de finalización',
     )
+    # Motivo de cierre del componente (RF-FLU-07/08): texto libre escrito por
+    # el administrativo. Sin catálogo propio (DA-6 cerrada en la spec 008).
     motivo_finalizacion = models.CharField(
         max_length=30,
-        choices=[
-            (EstadoComponente.FINALIZADO_POR_CLIENTE, 'Finalizado por cliente'),
-            (EstadoComponente.FINALIZADO_POR_TECNICO, 'Finalizado por técnico'),
-        ],
         blank=True, verbose_name='Motivo de finalización',
     )
 

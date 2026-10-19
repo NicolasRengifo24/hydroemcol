@@ -1,251 +1,193 @@
-"""Reglas de negocio puras de los componentes de un servicio.
+"""Reglas puras del flujo simplificado de la spec 008.
 
-Todas las funciones de este archivo:
-
-- reciben `hoy` como primer parámetro, que es el estado actual del servicio ya
-  leído y serializado;
-- devuelven un valor (o `None`);
-- no escriben nada, no guardan objetos y no preguntan la hora del sistema.
-
-`hoy` tiene esta forma:
-
-    {
-        'componentes': [
-            {'id': 1, 'estado': 'PENDIENTE', 'trabajo_iniciado': False},
-            ...
-        ],
-        'cotizaciones_por_componente': {
-            1: [
-                {'id': 10, 'es_bloqueante': True, 'estado': 'PENDIENTE'},
-                ...
-            ],
-            ...
-        },
-    }
-
-El criterio de la especificación 002 es único: un componente tiene posibilidad de
-continuar cuando **ninguna** de sus cotizaciones `bloqueantes` está `pendiente`
-o `rechazada`. Las cotizaciones `no_bloqueantes` nunca detienen el componente, ni
-siquiera cuando están rechazadas.
+Las funciones reciben el snapshot ``hoy`` construido por los serializers y no
+leen reloj ni base de datos. ``token`` significa la credencial privada de
+seguimiento; un rechazo de cliente es una respuesta no bloqueante para el
+estado del componente: no lo mueve.
 """
 
 from servicios.estados import ESTADOS_FINALIZACION, EstadoComponente
+from servicios.models import EstadoServicio
 
-# Estados de cotización que detienen un componente mientras siga vigente su
-# cotización bloqueante.
-ESTADOS_COTIZACION_BLOQUEANTE = ('PENDIENTE', 'RECHAZADA')
+
+ESTADOS_SERVICIO_NORMALES = (EstadoServicio.SOLICITADO, EstadoServicio.EN_CURSO)
+ESTADOS_SERVICIO_CERRADOS = (EstadoServicio.FINALIZADO, EstadoServicio.CANCELADO)
+ESTADOS_SELECCIONABLES_COMPONENTE = tuple(EstadoComponente.values)
+
+# Tabla §4.1: solo destinos decididos manualmente por el administrativo.
+TRANSICIONES_MANUALES_COMPONENTE = {
+    EstadoComponente.PENDIENTE: [EstadoComponente.EN_REVISION],
+    EstadoComponente.EN_REVISION: [EstadoComponente.COTIZANDO],
+    EstadoComponente.COTIZANDO: [],
+    EstadoComponente.ESPERANDO_APROBACION: [EstadoComponente.RECHAZADO],
+    EstadoComponente.OPERARIO_TRABAJANDO: [EstadoComponente.EN_PRUEBAS],
+    EstadoComponente.EN_PRUEBAS: [EstadoComponente.LISTO_PARA_ENTREGA],
+    EstadoComponente.LISTO_PARA_ENTREGA: [EstadoComponente.EN_PRUEBAS],
+    EstadoComponente.RECHAZADO: [EstadoComponente.ESPERANDO_APROBACION],
+}
 
 
 def _cotizaciones_de(hoy, componente):
-    """Devuelve las cotizaciones del componente, o lista vacía si no tiene."""
-    return hoy.get('cotizaciones_por_componente', {}).get(componente['id'], [])
-
-
-def _bloqueantes(hoy, componente):
-    """Devuelve solo las cotizaciones bloqueantes del componente."""
-    return [
-        cotizacion
-        for cotizacion in _cotizaciones_de(hoy, componente)
-        if cotizacion['es_bloqueante']
-    ]
-
-
-def _tiene_bloqueante_en(hoy, componente, estado):
-    """Indica si alguna cotización bloqueante del componente está en `estado`."""
-    return any(
-        cotizacion['estado'] == estado
-        for cotizacion in _bloqueantes(hoy, componente)
-    )
+    return hoy.get('cotizaciones_por_componente', {}).get(componente.get('id'), [])
 
 
 def tiene_trabajo_iniciado(hoy, componente):
-    """Indica si la empresa ya empezó a trabajar sobre el componente.
-
-    El inicio de trabajo se registra al iniciar el desmontaje (RF-COT-08). Lo
-    usa la regla de cierre del servicio, que exige que no haya trabajo en curso.
-    """
+    """Dato informativo conservado para compatibilidad con acciones antiguas."""
     return bool(componente.get('trabajo_iniciado', False))
 
 
-def puede_continuar(hoy, componente):
-    """Indica si el componente puede pasar a la siguiente fase de trabajo.
+def requiere_motivo(destino):
+    """Indica si el destino es una finalización; la corrección depende del origen."""
+    return destino in ESTADOS_FINALIZACION
 
-    Falso si el componente ya está finalizado, o si tiene alguna cotización
-    `bloqueante` en estado `pendiente` o `rechazada`. En cualquier otro caso,
-    verdadero.
+
+def estados_componente_seleccionables(hoy, componente):
+    """Destinos manuales válidos; los automáticos nunca aparecen aquí."""
+    return list(TRANSICIONES_MANUALES_COMPONENTE.get(componente.get('estado'), []))
+
+
+def _decision(**cambios):
+    resultado = {'permitido': False, 'tipo': None, 'codigo': None,
+                 'motivo': '', 'extra': {}}
+    resultado.update(cambios)
+    return resultado
+
+
+def resolver_transicion_componente(hoy, componente, destino, comentario=''):
+    """Valida un destino manual, un noop o una transición no listada.
+
+    Un destino de catálogo no listado devuelve 409; un código desconocido 400.
+    ``RECHAZADO`` solo es posible si existe una cotización rechazada.
     """
-    if componente.get('estado') in ESTADOS_FINALIZACION:
-        return False
-
-    hay_bloqueo = any(
-        cotizacion['es_bloqueante']
-        and cotizacion['estado'] in ESTADOS_COTIZACION_BLOQUEANTE
-        for cotizacion in _cotizaciones_de(hoy, componente)
+    if destino not in ESTADOS_SELECCIONABLES_COMPONENTE:
+        return _decision(codigo=400, motivo='Ese estado no puede asignarse manualmente.')
+    if destino == componente.get('estado'):
+        return _decision(permitido=True, tipo='noop', codigo=200)
+    destinos = estados_componente_seleccionables(hoy, componente)
+    if destino not in destinos:
+        return _decision(codigo=409, motivo='La transición no está permitida.')
+    requiere_comentario = (
+        destino in ESTADOS_FINALIZACION
+        or componente.get('estado') in ESTADOS_FINALIZACION
     )
-    return not hay_bloqueo
+    if requiere_comentario and not str(comentario or '').strip():
+        return _decision(codigo=400, motivo='Este cambio requiere un motivo o comentario.')
+    if destino == EstadoComponente.RECHAZADO:
+        if not any(c.get('estado') == 'RECHAZADA' for c in _cotizaciones_de(hoy, componente)):
+            return _decision(codigo=409, motivo='Se requiere una cotización rechazada.')
+        return _decision(permitido=True, tipo='finalizar', codigo=200)
+    tipo = 'correccion' if componente.get('estado') in ESTADOS_FINALIZACION else 'normal'
+    if destino in ESTADOS_FINALIZACION:
+        tipo = 'finalizar'
+    return _decision(permitido=True, tipo=tipo, codigo=200)
 
 
-def estado_por_rechazo_bloqueante(hoy, componente):
-    """Devuelve el estado que impone un rechazo bloqueante, o `None`.
-
-    Solo el rechazo de una cotización `bloqueante` fija el estado del
-    componente a `rechazado_bloqueante` (RF-COT-05). Una cotización pendiente
-    deja el componente como está, y una cotización `no_bloqueante` rechazada no
-    cambia nada (RF-COT-06, RF-COT-07).
-
-    El rechazo bloqueante tiene prioridad sobre una pendiente: si conviven, el
-    componente está en la situación más restrictiva.
-    """
-    if _tiene_bloqueante_en(hoy, componente, 'RECHAZADA'):
-        return EstadoComponente.RECHAZADO_BLOQUEANTE
-    return None
+def es_cambio_fuera_de_pendiente(componente_anterior, componente_hoy):
+    return (componente_anterior.get('estado') == EstadoComponente.PENDIENTE
+            and componente_hoy.get('estado') != EstadoComponente.PENDIENTE)
 
 
-def motivo_bloqueo(hoy, componente):
-    """Explica en español por qué el componente está detenido, o `None`.
+def transicion_por_respuesta(hoy, componente, resultado, origen_espera):
+    """Aprobación automática; rechazo deja el componente donde estaba."""
+    if componente.get('estado') != EstadoComponente.ESPERANDO_APROBACION:
+        return None
+    if resultado != 'APROBADA':
+        return None
+    if origen_espera == EstadoComponente.LISTO_PARA_ENTREGA:
+        return EstadoComponente.EN_PRUEBAS
+    return EstadoComponente.OPERARIO_TRABAJANDO
 
-    Distingue los dos motivos posibles: el cliente rechazó una cotización
-    bloqueante (RF-COT-05) o todavía no respondió una pendiente (RF-COT-04). Si
-    hay ambos, manda el rechazo, que es el motivo más restrictivo.
-    """
-    if _tiene_bloqueante_en(hoy, componente, 'RECHAZADA'):
-        return (
-            'El cliente rechazó una cotización bloqueante. '
-            'El componente queda detenido hasta redefinir el alcance.'
-        )
-    if _tiene_bloqueante_en(hoy, componente, 'PENDIENTE'):
-        return (
-            'Hay una cotización bloqueante pendiente de respuesta del cliente. '
-            'El componente queda detenido hasta recibir su respuesta.'
-        )
+
+def transicion_por_cotizacion(hoy, componente):
+    if componente.get('estado') in (
+        EstadoComponente.COTIZANDO, EstadoComponente.OPERARIO_TRABAJANDO,
+        EstadoComponente.EN_PRUEBAS, EstadoComponente.LISTO_PARA_ENTREGA,
+    ):
+        return EstadoComponente.ESPERANDO_APROBACION
     return None
 
 
 def componentes_no_finalizados(hoy):
-    """Devuelve los componentes que aún no están cerrados.
-
-    Es el criterio único del glosario 4.8: el servicio sigue abierto mientras
-    exista un solo componente sin finalizar, sin importar si ese componente
-    está activo o detenido por un rechazo.
-    """
-    return [
-        componente
-        for componente in hoy.get('componentes', [])
-        if componente['estado'] not in ESTADOS_FINALIZACION
-    ]
-
-
-def todos_rechazan_bloqueantes(hoy):
-    """Indica si todas las cotizaciones bloqueantes del servicio están rechazadas.
-
-    Devuelve `True` solo si existe al menos una cotización `bloqueante` y todas
-    están en estado `rechazada`:
-
-    - sin cotizaciones bloqueantes → `False`, porque no hay nada que rechazar;
-    - alguna `bloqueante` `pendiente` → `False` (RF-COT-12: se está esperando
-      al cliente, no es que el trabajo se haya descartado);
-    - alguna `bloqueante` `aprobada` → `False`;
-    - todas `bloqueante` `rechazada` → `True`.
-
-    Las cotizaciones `no_bloqueantes` son indiferentes para esta regla.
-    """
-    bloqueantes = [
-        cotizacion
-        for cotizacion in hoy.get('cotizaciones', [])
-        if cotizacion['es_bloqueante']
-    ]
-    if not bloqueantes:
-        return False
-    return all(cotizacion['estado'] == 'RECHAZADA' for cotizacion in bloqueantes)
+    return [c for c in hoy.get('componentes', [])
+            if c.get('estado') not in ESTADOS_FINALIZACION]
 
 
 def puede_finalizar_servicio(hoy):
-    """Indica si está habilitada la acción manual de finalizar el servicio.
-
-    El criterio de habilitación es único: todos los componentes deben estar en
-    estado de finalización (glosario 4.8 y RF-COT-13).
-
-    El "caso 2" de RF-COT-11 (todas las cotizaciones bloqueantes rechazadas y
-    ningún componente con trabajo iniciado) no habilita el cierre por sí solo:
-    describe el motivo por el que se cierra, que es lo que
-    `resumen_cierre` le muestra al administrativo.
-
-    Ninguna función de este archivo finaliza un servicio: solo habilitan. La
-    ejecución es siempre una acción manual del administrativo (glosario 4.9).
-    """
-    return componentes_no_finalizados(hoy) == []
+    return bool(hoy.get('componentes')) and not componentes_no_finalizados(hoy)
 
 
 def resumen_cierre(hoy):
-    """Devuelve si la acción está habilitada y por qué, para la interfaz.
+    impeditivos = [c.get('id') for c in componentes_no_finalizados(hoy)]
+    if not hoy.get('componentes'):
+        return {'puede_finalizar': False, 'caso': 'SIN_COMPONENTES',
+                'detalle': 'El servicio no tiene componentes que cerrar',
+                'impeditivos': []}
+    if impeditivos:
+        return {'puede_finalizar': False, 'caso': 'COMPONENTES_PENDIENTES',
+                'detalle': 'Quedan componentes sin finalizar: ' + ', '.join(map(str, impeditivos)),
+                'impeditivos': impeditivos}
+    return {'puede_finalizar': True, 'caso': 'TODOS_FINALIZADOS',
+            'detalle': 'Todos los componentes están finalizados', 'impeditivos': []}
 
-    Devuelve tres claves: `puede_finalizar`, `caso` y `detalle` (en español).
-    Los casos describen el motivo, no condiciones independientes: solo se
-    habilita cuando todos los componentes están finalizados.
-    """
-    pendientes = componentes_no_finalizados(hoy)
 
-    if not pendientes:
-        con_trabajo = [
-            componente
-            for componente in hoy.get('componentes', [])
-            if tiene_trabajo_iniciado(hoy, componente)
-        ]
-        if todos_rechazan_bloqueantes(hoy) and not con_trabajo:
-            return {
-                'puede_finalizar': True,
-                'caso': 'TODAS_BLOQUEANTES_RECHAZADAS_SIN_TRABAJO',
-                'detalle': (
-                    'Todos los componentes están finalizados. Las cotizaciones '
-                    'bloqueantes fueron rechazadas y no se inició trabajo en '
-                    'ningún componente'
-                ),
-            }
-        return {
-            'puede_finalizar': True,
-            'caso': 'TODOS_FINALIZADOS',
-            'detalle': 'Todos los componentes están finalizados',
-        }
+def estados_servicio_seleccionables(hoy):
+    return []
 
-    # Queda al menos un componente sin finalizar: la acción nunca se habilita.
-    if todos_rechazan_bloqueantes(hoy):
-        return {
-            'puede_finalizar': False,
-            'caso': 'BLOQUEANTES_RECHAZADAS_CON_TRABAJO_INICIADO',
-            'detalle': (
-                f'Quedan {len(pendientes)} componente(s) sin finalizar. '
-                'Debe finalizarlos uno a uno antes de cerrar el servicio'
-            ),
-        }
 
-    return {
-        'puede_finalizar': False,
-        'caso': 'SERVICIO_EN_CURSO',
-        'detalle': f'Quedan {len(pendientes)} componente(s) sin finalizar',
-    }
+def puede_cancelar_servicio(hoy):
+    return bool(hoy.get('activo', False)) and hoy.get('estado') not in ESTADOS_SERVICIO_CERRADOS
+
+
 def estados_cerrados():
-    """Estados de servicio que indican que no está en curso."""
-    from servicios.models import EstadoServicio
+    return ESTADOS_SERVICIO_CERRADOS
 
-    return (
-        EstadoServicio.FINALIZADO,
-        EstadoServicio.ENTREGADO,
-        EstadoServicio.CANCELADO,
-    )
+
+# Compatibilidad temporal para imports de acciones.py/serializers.py (T4 los
+# retirará). No son usadas por las reglas nuevas.
+def tiene_bloqueo_cotizacion(hoy, componente):
+    return any(c.get('es_bloqueante') and c.get('estado') in ('PENDIENTE', 'RECHAZADA')
+               for c in _cotizaciones_de(hoy, componente))
+
+
+def puede_continuar(hoy, componente):
+    return componente.get('estado') not in ESTADOS_FINALIZACION and not tiene_bloqueo_cotizacion(hoy, componente)
+
+
+def estado_por_rechazo_bloqueante(hoy, componente):
+    return None
+
+
+def todos_rechazan_bloqueantes(hoy):
+    return False
+
+
+def motivo_bloqueo(hoy, componente):
+    return None
+
+
+def fecha_para_estado_servicio(destino):
+    return 'fecha_finalizacion' if destino == EstadoServicio.FINALIZADO else None
+
+
+def resolver_transicion_servicio(hoy, destino, comentario=''):
+    """Compatibilidad hasta T4; el selector libre de servicio sigue vacío."""
+    if destino not in ESTADOS_SERVICIO_NORMALES + ESTADOS_SERVICIO_CERRADOS:
+        return _decision(codigo=400, motivo='Estado de servicio inválido.')
+    if destino == hoy.get('estado'):
+        return _decision(permitido=True, tipo='noop', codigo=200)
+    if not hoy.get('activo') or hoy.get('estado') in ESTADOS_SERVICIO_CERRADOS:
+        return _decision(codigo=409, motivo='El servicio está cerrado o desactivado.')
+    if destino == EstadoServicio.CANCELADO and not str(comentario or '').strip():
+        return _decision(codigo=400, motivo='La cancelación requiere un comentario.')
+    if destino == EstadoServicio.FINALIZADO and not puede_finalizar_servicio(hoy):
+        return _decision(codigo=409, motivo=resumen_cierre(hoy)['detalle'],
+                        extra={'resumen_cierre': resumen_cierre(hoy)})
+    return _decision(permitido=True, tipo='cancelar' if destino == EstadoServicio.CANCELADO else 'normal', codigo=200)
 
 
 def tiene_solicitud_en_curso(hoy, *, correo_norm=None, telefono_norm=None, whatsapp_norm=None):
-    """Indica si existe alguna solicitud en curso según correo o teléfono.
-
-    Consulta los servicios que no están en `estados_cerrados()` y comparte con
-    ellos el correo, el teléfono o el WhatsApp normalizados (OR). Es la fuente
-    única que usa la vista pública para decidir si debe avisar de un posible
-    duplicado (RF-8.1). `hoy` no se usa; se mantiene por el patrón del módulo.
-    """
     from django.db.models import Q
-
     from servicios.models import Servicio
-
     q = Q()
     if correo_norm:
         q |= Q(cliente__email=correo_norm)
@@ -253,15 +195,4 @@ def tiene_solicitud_en_curso(hoy, *, correo_norm=None, telefono_norm=None, whats
         q |= Q(cliente__telefono=telefono_norm)
     if whatsapp_norm:
         q |= Q(cliente__whatsapp=whatsapp_norm)
-    if not q:
-        return False
-
-    return (
-        Servicio.objects.filter(q)
-        .exclude(estado__in=estados_cerrados())
-        .exists()
-    )
-
-
-
-
+    return bool(q) and Servicio.objects.filter(q).exclude(estado__in=estados_cerrados()).exists()

@@ -22,7 +22,6 @@ class T1ReglasTest(SimpleTestCase):
     def test_estados_cerrados_definidos(self):
         cerrados = reglas.estados_cerrados()
         self.assertIn(EstadoServicio.FINALIZADO, cerrados)
-        self.assertIn(EstadoServicio.ENTREGADO, cerrados)
         self.assertIn(EstadoServicio.CANCELADO, cerrados)
 
     def test_tiene_solicitud_en_curso_sin_datos_no_consulta_bd(self):

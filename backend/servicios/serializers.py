@@ -1,13 +1,11 @@
 from pathlib import Path
 
-from django.utils import timezone
 from rest_framework import serializers
 
 from .estados import (
     CanalRespuesta,
     ESTADOS_FINALIZACION,
     EstadoComponente,
-    EstadoFaseComponente,
 )
 from .models import (
     AprobacionServicio,
@@ -16,6 +14,7 @@ from .models import (
     Cotizacion,
     DetalleCotizacion,
     EstadoCotizacion,
+    EstadoServicio,
     Fotografia,
     HistorialComponente,
     HistorialServicio,
@@ -25,9 +24,8 @@ from .models import (
     Servicio,
 )
 from .reglas import (
-    componentes_no_finalizados,
-    motivo_bloqueo,
-    puede_continuar,
+    estados_componente_seleccionables,
+    puede_cancelar_servicio,
     resumen_cierre,
     tiene_trabajo_iniciado,
 )
@@ -67,6 +65,9 @@ def construir_hoy(servicio):
             for lista in cotizaciones_por_componente.values()
             for cotizacion in lista
         ],
+        # Llaves de servicio que consumen las reglas de estado de la spec 006.
+        'estado': servicio.estado,
+        'activo': servicio.activo,
     }
 
 
@@ -87,8 +88,7 @@ class ClienteSerializer(serializers.ModelSerializer):
 
 
 class ComponenteSerializer(serializers.ModelSerializer):
-    puede_continuar = serializers.SerializerMethodField()
-    motivo_bloqueo = serializers.SerializerMethodField()
+    motivo_espera = serializers.SerializerMethodField()
 
     class Meta:
         model = Componente
@@ -96,7 +96,7 @@ class ComponenteSerializer(serializers.ModelSerializer):
             'id', 'servicio', 'tipo', 'marca', 'referencia', 'descripcion',
             'cantidad', 'estado', 'fase', 'trabajo_iniciado',
             'fecha_inicio_trabajo', 'fecha_finalizacion', 'motivo_finalizacion',
-            'puede_continuar', 'motivo_bloqueo',
+            'motivo_espera',
         ]
         read_only_fields = [
             'servicio',
@@ -114,19 +114,16 @@ class ComponenteSerializer(serializers.ModelSerializer):
     def _reglas_del_servicio(self, obj):
         return construir_hoy(obj.servicio)
 
-    def get_puede_continuar(self, obj):
-        hoy = self._reglas_del_servicio(obj)
-        componente = next(
-            c for c in hoy['componentes'] if c['id'] == obj.pk
+    def get_motivo_espera(self, obj):
+        if obj.estado != EstadoComponente.ESPERANDO_APROBACION:
+            return None
+        pendiente = obj.servicio.cotizaciones.filter(
+            componente=obj, estado=EstadoCotizacion.PENDIENTE,
+        ).exists()
+        return (
+            'Cotización pendiente de respuesta' if pendiente else
+            'Cotización rechazada: reenviar o finalizar como RECHAZADO'
         )
-        return puede_continuar(hoy, componente)
-
-    def get_motivo_bloqueo(self, obj):
-        hoy = self._reglas_del_servicio(obj)
-        componente = next(
-            c for c in hoy['componentes'] if c['id'] == obj.pk
-        )
-        return motivo_bloqueo(hoy, componente)
 
 
 class DetalleCotizacionSerializer(serializers.ModelSerializer):
@@ -395,24 +392,24 @@ class HistorialComponenteAdministrativoSerializer(serializers.ModelSerializer):
 class ComponenteAdministrativoSerializer(ComponenteSerializer):
     historial = HistorialComponenteAdministrativoSerializer(many=True, read_only=True)
     acciones_disponibles = serializers.SerializerMethodField()
+    estados_seleccionables = serializers.SerializerMethodField()
     etiqueta_estado = serializers.CharField(source='get_estado_display', read_only=True)
     etiqueta_fase = serializers.CharField(source='get_fase_display', read_only=True)
 
     class Meta(ComponenteSerializer.Meta):
         fields = ComponenteSerializer.Meta.fields + [
-            'etiqueta_estado', 'etiqueta_fase', 'historial', 'acciones_disponibles',
+            'etiqueta_estado', 'etiqueta_fase', 'historial',
+            'acciones_disponibles', 'estados_seleccionables',
         ]
 
     def get_acciones_disponibles(self, obj):
+        if obj.servicio.estado in (EstadoServicio.FINALIZADO, EstadoServicio.CANCELADO):
+            return []
         hoy = construir_hoy(obj.servicio)
         componente = next(c for c in hoy['componentes'] if c['id'] == obj.pk)
         acciones = []
         if obj.estado in ESTADOS_FINALIZACION:
             acciones.append('corregir_finalizacion')
-        else:
-            if not obj.trabajo_iniciado and puede_continuar(hoy, componente):
-                acciones.append('iniciar_trabajo')
-            acciones.append('finalizar_componente')
         if any(
             cotizacion.componente_id == obj.pk
             and cotizacion.estado == EstadoCotizacion.PENDIENTE
@@ -420,6 +417,16 @@ class ComponenteAdministrativoSerializer(ComponenteSerializer):
         ):
             acciones.append('responder_cotizacion')
         return acciones
+
+    def get_estados_seleccionables(self, obj):
+        """Opciones de estado que el backend autoriza para este componente.
+
+        Las calcula `reglas.py`: excluyen los estados derivados y, en
+        `RECHAZADO_BLOQUEANTE`, solo ofrecen finalizar (RF-EST-01).
+        """
+        hoy = construir_hoy(obj.servicio)
+        componente = next(c for c in hoy['componentes'] if c['id'] == obj.pk)
+        return list(estados_componente_seleccionables(hoy, componente))
 
 
 class ServicioResumenAdministrativoSerializer(serializers.ModelSerializer):
@@ -456,7 +463,8 @@ class ServicioAdministrativoSerializer(serializers.ModelSerializer):
             'recoger', 'fecha_solicitud', 'fecha_recepcion', 'fecha_finalizacion',
             'fecha_entrega', 'observaciones_internas', 'activo', 'componentes',
             'cotizaciones', 'historial', 'fotografias', 'registro_tecnico',
-            'resumen_cierre', 'acciones_disponibles', 'seguimiento',
+            'resumen_cierre', 'acciones_disponibles',
+            'seguimiento',
         ]
         read_only_fields = [field for field in fields if field != 'observaciones_internas']
 
@@ -472,9 +480,14 @@ class ServicioAdministrativoSerializer(serializers.ModelSerializer):
         return attrs
 
     def get_acciones_disponibles(self, obj):
+        if obj.estado in (EstadoServicio.FINALIZADO, EstadoServicio.CANCELADO):
+            return []
+        hoy = construir_hoy(obj)
         acciones = []
-        if self.get_resumen_cierre(obj)['puede_finalizar']:
+        if resumen_cierre(hoy)['puede_finalizar']:
             acciones.append('finalizar_servicio')
+        if puede_cancelar_servicio(hoy):
+            acciones.append('cancelar_servicio')
         return acciones
 
     def get_seguimiento(self, obj):
@@ -517,16 +530,26 @@ class RespuestaCotizacionInputSerializer(serializers.Serializer):
     observacion = serializers.CharField(required=False, allow_blank=True, default='')
 
 
-class FinalizarComponenteInputSerializer(serializers.Serializer):
-    """Motivo de finalización de un componente (RF-COT-09)."""
+class CambiarEstadoComponenteInputSerializer(serializers.Serializer):
+    """Entrada del cambio de estado operativo de un componente (RF-EST-03).
 
-    motivo = serializers.ChoiceField(choices=ESTADOS_FINALIZACION)
+    Solo acepta el catálogo de estados: la acción revalida además las reglas
+    vigentes, así que el serializer no decide transiciones (principio 3).
+    """
+
+    estado = serializers.ChoiceField(choices=EstadoComponente.choices)
+    comentario = serializers.CharField(required=False, allow_blank=True, default='')
 
 
-class CorregirFinalizacionInputSerializer(serializers.Serializer):
-    """Nuevo estado tras corregir un cierre mal registrado (RF-COT-10)."""
+class CancelarServicioInputSerializer(serializers.Serializer):
+    """Comentario obligatorio para la cancelación administrativa."""
 
-    nuevo_estado = serializers.ChoiceField(choices=EstadoComponente.choices)
+    comentario = serializers.CharField(required=True, allow_blank=False, trim_whitespace=True)
+
+
+class FinalizarServicioInputSerializer(serializers.Serializer):
+    """Comentario opcional de cierre del servicio."""
+
     comentario = serializers.CharField(required=False, allow_blank=True, default='')
 
 

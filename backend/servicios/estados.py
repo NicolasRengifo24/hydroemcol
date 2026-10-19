@@ -4,9 +4,12 @@ Este archivo es la fuente única de verdad de los estados. Lo importan los
 modelos, los serializers, las vistas y el admin, para que el mismo nombre de
 estado no se escriba en varios sitios.
 
-Los estados de cierre de un componente son `FINALIZADO_POR_CLIENTE` y
-`FINALIZADO_POR_TECNICO`. Cualquier otro estado significa que al componente le
-falta trabajo por ejecutar, y por tanto el servicio sigue abierto.
+Catálogo de la spec 008 (§4, RF-FLU-02): ocho estados de componente. Los
+estados de cierre de un componente son `LISTO_PARA_ENTREGA` y `RECHAZADO`,
+ambos alcanzados solo con finalización manual del administrativo que registra
+motivo (texto libre) y fecha (RF-FLU-07 y RF-FLU-08). Cualquier otro estado
+significa que al componente le falta trabajo por ejecutar, y por tanto el
+servicio sigue abierto.
 """
 
 from django.db import models
@@ -16,12 +19,13 @@ class EstadoComponente(models.TextChoices):
     """Estados por los que atraviesa un componente dentro de un servicio."""
 
     PENDIENTE = 'PENDIENTE', 'Pendiente'
-    APROBADO = 'APROBADO', 'Aprobado'
+    EN_REVISION = 'EN_REVISION', 'En revisión'
+    COTIZANDO = 'COTIZANDO', 'Cotizando'
+    ESPERANDO_APROBACION = 'ESPERANDO_APROBACION', 'Esperando aprobación'
+    OPERARIO_TRABAJANDO = 'OPERARIO_TRABAJANDO', 'Operario trabajando'
+    EN_PRUEBAS = 'EN_PRUEBAS', 'En pruebas'
+    LISTO_PARA_ENTREGA = 'LISTO_PARA_ENTREGA', 'Listo para entregar'
     RECHAZADO = 'RECHAZADO', 'Rechazado'
-    RECHAZADO_BLOQUEANTE = 'RECHAZADO_BLOQUEANTE', 'Rechazado (bloqueante)'
-    EN_PROCESO = 'EN_PROCESO', 'En proceso'
-    FINALIZADO_POR_CLIENTE = 'FINALIZADO_POR_CLIENTE', 'Finalizado por cliente'
-    FINALIZADO_POR_TECNICO = 'FINALIZADO_POR_TECNICO', 'Finalizado por técnico'
 
 
 class EstadoFaseComponente(models.TextChoices):
@@ -48,8 +52,10 @@ class CanalRespuesta(models.TextChoices):
 
 
 # Estados que cierran un componente. Mientras un componente no esté en uno de
-# estos dos, el servicio sigue abierto (criterio único de la especificación).
+# estos dos, el servicio sigue abierto (criterio único de la especificación,
+# RF-FLU-09). Ambos se alcanzan solo con finalización manual que registra
+# motivo y fecha (RF-FLU-07/08).
 ESTADOS_FINALIZACION = (
-    EstadoComponente.FINALIZADO_POR_CLIENTE,
-    EstadoComponente.FINALIZADO_POR_TECNICO,
+    EstadoComponente.LISTO_PARA_ENTREGA,
+    EstadoComponente.RECHAZADO,
 )
