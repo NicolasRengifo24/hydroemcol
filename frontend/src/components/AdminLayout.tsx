@@ -1,24 +1,36 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { cerrarSesion } from '../services/api'
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  BarChart3,
+  ClipboardList,
+  LayoutDashboard,
+  LogOut,
+} from "lucide-react";
+import { cerrarSesion } from "../services/api";
+import Logo from "./brand/Logo";
 
 function AdminLayout() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   async function manejarCierreSesion() {
-    await cerrarSesion()
-    navigate('/admin/login', { replace: true })
+    await cerrarSesion();
+    navigate("/admin/login", { replace: true });
   }
 
   return (
     <div className="admin-layout">
       <header className="admin-header">
         <div className="admin-header__marca">
-          <span className="admin-header__eyebrow">HIDROEMCOL</span>
+          <Logo mostrarTexto sobreOscuro className="admin-header__logo" />
           <span className="admin-header__titulo">Operación administrativa</span>
         </div>
         <div className="admin-header__usuario">
           <span className="admin-header__sesion">Sesión administrativa</span>
-          <button className="admin-button admin-button--quiet" type="button" onClick={manejarCierreSesion}>
+          <button
+            className="admin-button admin-button--quiet"
+            type="button"
+            onClick={manejarCierreSesion}
+          >
+            <LogOut size={16} aria-hidden="true" />
             Cerrar sesión
           </button>
         </div>
@@ -26,11 +38,33 @@ function AdminLayout() {
 
       <div className="admin-shell">
         <nav className="admin-nav" aria-label="Navegación administrativa">
-          <NavLink end to="/admin" className={({ isActive }) => `admin-nav__link${isActive ? ' is-active' : ''}`}>
+          <NavLink
+            end
+            to="/admin"
+            className={({ isActive }) =>
+              `admin-nav__link${isActive ? " is-active" : ""}`
+            }
+          >
+            <LayoutDashboard size={18} aria-hidden="true" />
             Resumen operativo
           </NavLink>
-          <NavLink to="/admin/servicios" className={({ isActive }) => `admin-nav__link${isActive ? ' is-active' : ''}`}>
+          <NavLink
+            to="/admin/servicios"
+            className={({ isActive }) =>
+              `admin-nav__link${isActive ? " is-active" : ""}`
+            }
+          >
+            <ClipboardList size={18} aria-hidden="true" />
             Servicios
+          </NavLink>
+          <NavLink
+            to="/admin/indicadores"
+            className={({ isActive }) =>
+              `admin-nav__link${isActive ? " is-active" : ""}`
+            }
+          >
+            <BarChart3 size={18} aria-hidden="true" />
+            Indicadores
           </NavLink>
         </nav>
         <main className="admin-main">
@@ -38,7 +72,7 @@ function AdminLayout() {
         </main>
       </div>
     </div>
-  )
+  );
 }
 
-export default AdminLayout
+export default AdminLayout;

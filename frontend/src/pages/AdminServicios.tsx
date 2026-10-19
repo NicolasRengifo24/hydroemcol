@@ -5,15 +5,8 @@ import type { CodigoEstadoServicio, ParametrosListadoServicios, ServicioResumenA
 
 const estados: Array<{ codigo: CodigoEstadoServicio; etiqueta: string }> = [
   { codigo: 'SOLICITADO', etiqueta: 'Solicitado' },
-  { codigo: 'EN_REVISION', etiqueta: 'En revisión' },
-  { codigo: 'COTIZANDO', etiqueta: 'Cotizando' },
-  { codigo: 'ESPERANDO_APROBACION', etiqueta: 'Esperando aprobación' },
-  { codigo: 'EN_REPARACION', etiqueta: 'En reparación' },
-  { codigo: 'EN_PRUEBAS', etiqueta: 'En pruebas' },
+  { codigo: 'EN_CURSO', etiqueta: 'En curso' },
   { codigo: 'FINALIZADO', etiqueta: 'Finalizado' },
-  { codigo: 'LISTO_PARA_ENTREGA', etiqueta: 'Listo para entrega' },
-  { codigo: 'ENTREGADO', etiqueta: 'Entregado' },
-  { codigo: 'NO_APROBADO', etiqueta: 'No aprobado' },
   { codigo: 'CANCELADO', etiqueta: 'Cancelado' },
 ]
 

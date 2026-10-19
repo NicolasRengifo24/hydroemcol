@@ -73,13 +73,6 @@ function limpiarSesion(): void {
   cambiarEstadoSesion('anonima')
 }
 
-function dirigirAlLogin(): void {
-  if (typeof window === 'undefined') return
-  if (window.location.pathname !== '/admin/login') {
-    window.location.assign('/admin/login')
-  }
-}
-
 export function obtenerEstadoSesion(): EstadoSesion {
   return estadoSesion
 }
@@ -122,8 +115,10 @@ async function renovarSesion(): Promise<string | null> {
     return accessToken
   } catch (error) {
     if (esErrorApi(error) && error.status === 401) {
+      // El refresh cookie dejó de ser válido (caducó o rotó en otra pestaña).
+      // La redirección la resuelve quien observa la sesión (el guard), para
+      // conservar el destino original (RF-EST-14/15).
       limpiarSesion()
-      dirigirAlLogin()
       return null
     }
     throw error
@@ -138,6 +133,45 @@ export function refrescarSesion(): Promise<string | null> {
     })
   }
   return refreshEnCurso
+}
+
+let bootstrapEnCurso: Promise<EstadoSesion> | null = null
+
+async function ejecutarBootstrap(): Promise<EstadoSesion> {
+  cambiarEstadoSesion('autenticando')
+  try {
+    // Reutiliza el single-flight de `refrescarSesion()` (D-9). Un `null` es un
+    // 401 (cookie inválida o rotada en otra pestaña): se reintenta una sola vez.
+    let token = await refrescarSesion()
+    if (!token) {
+      token = await refrescarSesion()
+    }
+    if (token) return 'autenticada'
+
+    limpiarSesion()
+    return 'anonima'
+  } catch {
+    // Error de red, 5xx o 429: no se reintenta y la sesión queda anónima.
+    limpiarSesion()
+    return 'anonima'
+  }
+}
+
+/**
+ * Restaura la sesión al cargar una ruta administrativa (RF-EST-14/15).
+ *
+ * Si ya hay sesión, no hace nada. Si no, pide un refresh reutilizando el
+ * single-flight; reintenta una vez ante 401 y termina en `'autenticada'` o en
+ * `'anonima'`. No persiste tokens: el `access` vive solo en memoria.
+ */
+export function bootstrapSesion(): Promise<EstadoSesion> {
+  if (estadoSesion === 'autenticada') return Promise.resolve('autenticada')
+  if (!bootstrapEnCurso) {
+    bootstrapEnCurso = ejecutarBootstrap().finally(() => {
+      bootstrapEnCurso = null
+    })
+  }
+  return bootstrapEnCurso
 }
 
 export async function cerrarSesion(): Promise<void> {
@@ -185,10 +219,15 @@ export async function apiRequest<T = unknown>(
 
   if (!res.ok) {
     let data: unknown
+    // El cuerpo se lee una sola vez: leerlo primero como JSON y caer a `text()`
+    // lanzaba "body stream already read" cuando la respuesta de error no era
+    // JSON (p. ej. el 401 de /api/refresh/), enmascarando el error HTTP y
+    // rompiendo la detección de sesión (RF-EST-14/15).
+    const texto = await res.text()
     try {
-      data = await res.json()
+      data = texto ? JSON.parse(texto) : {}
     } catch {
-      data = { detail: await res.text() }
+      data = { detail: texto }
     }
     const error = new Error('API error') as ErrorApi
     error.status = res.status
@@ -215,16 +254,19 @@ export async function apiRequest<T = unknown>(
 // etiquetas legibles que devuelve la API se conservan como texto.
 export type CodigoEstadoServicio =
   | 'SOLICITADO'
+  | 'EN_CURSO'
+  | 'FINALIZADO'
+  | 'CANCELADO'
+
+export type CodigoEstadoComponente =
+  | 'PENDIENTE'
   | 'EN_REVISION'
   | 'COTIZANDO'
   | 'ESPERANDO_APROBACION'
-  | 'EN_REPARACION'
+  | 'OPERARIO_TRABAJANDO'
   | 'EN_PRUEBAS'
-  | 'FINALIZADO'
   | 'LISTO_PARA_ENTREGA'
-  | 'ENTREGADO'
-  | 'NO_APROBADO'
-  | 'CANCELADO'
+  | 'RECHAZADO'
 
 export type TipoServicio = 'DIAGNOSTICO' | 'REPARACION' | 'MANTENIMIENTO' | 'PRUEBA' | 'OTRO'
 export type TipoCotizacion = 'INICIAL' | 'ADICIONAL'
@@ -232,7 +274,6 @@ export type EstadoCotizacion = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA'
 export type ResultadoAprobacion = 'APROBADA' | 'RECHAZADA'
 export type MedioAprobacion = 'WEB' | 'WHATSAPP' | 'LLAMADA' | 'PRESENCIAL' | 'OTRO'
 export type CanalCotizacion = 'WEB' | 'WHATSAPP' | ''
-export type MotivoFinalizacion = 'FINALIZADO_POR_CLIENTE' | 'FINALIZADO_POR_TECNICO'
 
 export interface ClienteAdministrativo {
   id: number
@@ -260,12 +301,12 @@ export interface ComponenteAdministrativo {
   fecha_inicio_trabajo: string | null
   fecha_finalizacion: string | null
   motivo_finalizacion: string
-  puede_continuar: boolean
-  motivo_bloqueo: string | null
+  motivo_espera: string | null
   etiqueta_estado?: string
   etiqueta_fase?: string
   historial?: HistorialComponente[]
   acciones_disponibles?: string[]
+  estados_seleccionables?: CodigoEstadoComponente[]
 }
 
 export interface HistorialComponente {
@@ -466,12 +507,8 @@ export interface DatosFotografia {
   visible_cliente?: boolean
 }
 
-export interface AccionFinalizarComponente {
-  motivo: MotivoFinalizacion
-}
-
-export interface AccionCorregirFinalizacion {
-  nuevo_estado: string
+export interface AccionCambiarEstadoComponente {
+  estado: CodigoEstadoComponente
   comentario?: string
 }
 
@@ -480,6 +517,55 @@ export interface RespuestaCotizacion {
   resultado: ResultadoAprobacion
   canal: Exclude<CanalCotizacion, ''>
   observacion?: string
+}
+
+export interface ComponenteSeguimiento {
+  id: number
+  servicio: number
+  tipo: string
+  marca: string
+  referencia: string
+  descripcion: string
+  cantidad: number
+  estado: string
+  fase: string
+}
+
+export interface CotizacionSeguimiento {
+  numero: string
+  tipo: string
+  descripcion: string
+  estado: string
+  total: string
+  detalles: DetalleCotizacion[]
+}
+
+export interface HistorialSeguimiento {
+  estado: string
+  comentario: string
+  fecha: string
+}
+
+export interface FotografiaSeguimiento {
+  url: string
+  descripcion: string
+  tipo: string
+  fecha: string
+}
+
+export interface ServicioSeguimiento {
+  codigo: string
+  tipo_servicio: string
+  estado: string
+  descripcion_solicitud: string
+  fecha_solicitud: string
+  fecha_recepcion: string | null
+  fecha_finalizacion: string | null
+  fecha_entrega: string | null
+  componentes: ComponenteSeguimiento[]
+  historial: HistorialSeguimiento[]
+  fotografias: FotografiaSeguimiento[]
+  cotizaciones_pendientes: CotizacionSeguimiento[]
 }
 
 export const clavesAdministrativas = {
@@ -533,20 +619,22 @@ export const eliminarComponente = (servicioId: number, componenteId: number) =>
 export const responderCotizacion = (servicioId: number, componenteId: number, datos: RespuestaCotizacion) =>
   enviar<AprobacionServicio>(`/api/servicios/${servicioId}/componentes/${componenteId}/respuesta/`, 'POST', datos)
 
-export const iniciarTrabajo = (servicioId: number, componenteId: number) =>
-  enviar<ComponenteAdministrativo>(`/api/servicios/${servicioId}/componentes/${componenteId}/iniciar-trabajo/`, 'POST')
+export const finalizarServicio = (servicioId: number, comentario?: string) =>
+  enviar<ServicioAdministrativo>(`/api/servicios/${servicioId}/finalizar/`, 'POST', comentario ? { comentario } : {})
 
-export const finalizarComponente = (servicioId: number, componenteId: number, datos: AccionFinalizarComponente) =>
-  enviar<ComponenteAdministrativo>(`/api/servicios/${servicioId}/componentes/${componenteId}/finalizar/`, 'POST', datos)
+export const cancelarServicio = (servicioId: number, comentario: string) =>
+  enviar<ServicioAdministrativo>(`/api/servicios/${servicioId}/cancelar/`, 'POST', { comentario })
 
-export const corregirFinalizacion = (servicioId: number, componenteId: number, datos: AccionCorregirFinalizacion) =>
-  enviar<ComponenteAdministrativo>(`/api/servicios/${servicioId}/componentes/${componenteId}/corregir-finalizacion/`, 'POST', datos)
-
-export const finalizarServicio = (servicioId: number) =>
-  enviar<ServicioAdministrativo>(`/api/servicios/${servicioId}/finalizar/`, 'POST')
-
-export const desactivarServicio = (servicioId: number) =>
-  enviar<ServicioAdministrativo>(`/api/servicios/${servicioId}/desactivar/`, 'POST')
+export const cambiarEstadoComponente = (
+  servicioId: number,
+  componenteId: number,
+  datos: AccionCambiarEstadoComponente,
+) =>
+  enviar<ComponenteAdministrativo>(
+    `/api/servicios/${servicioId}/componentes/${componenteId}/estado/`,
+    'POST',
+    datos,
+  )
 
 export const crearCotizacion = (datos: DatosCotizacion) =>
   enviar<CotizacionAdministrativa>('/api/cotizaciones/', 'POST', datos)
@@ -559,6 +647,19 @@ export const reenviarCotizacion = (id: number, datos: DatosReenvioCotizacion) =>
 
 export const registrarAprobacionExterna = (cotizacionId: number, datos: DatosAprobacionExterna) =>
   enviar<AprobacionServicio>(`/api/cotizaciones/${cotizacionId}/aprobaciones/`, 'POST', datos)
+
+export const obtenerSeguimiento = (token: string) =>
+  apiRequest<ServicioSeguimiento>(`/api/seguimiento/${encodeURIComponent(token)}/`)
+
+export const responderSeguimiento = (
+  token: string,
+  resultado: ResultadoAprobacion,
+  observacion = '',
+) =>
+  enviar<AprobacionServicio>(`/api/seguimiento/${encodeURIComponent(token)}/aprobar/`, 'POST', {
+    resultado,
+    observacion,
+  })
 
 // Estos contratos quedan listos para los endpoints de T8; no alteran la sesión
 // y mantienen el mismo adaptador HTTP cuando esas rutas estén disponibles.
