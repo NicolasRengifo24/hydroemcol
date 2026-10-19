@@ -37,3 +37,18 @@ export function urlWhatsApp(mensaje: string = MENSAJE_WHATSAPP): string {
 export function urlLlamada(): string {
   return `tel:${NUMERO_CONTACTO}`
 }
+
+// Dirección física de la empresa, aprobada por el usuario (RF-10.1, D-6 de
+// specs/009-vista-nosotros). Única fuente de verdad de la dirección: no se
+// inventan coordenadas ni puntos de referencia (RF-10.4).
+export const DIRECCION = 'Calle 6 # 27b-55'
+
+// URL de Google Maps para embeber el mapa de la dirección en un iframe
+// accesible (RF-10.1). Se construye desde DIRECCION para no duplicarla; el
+// parámetro output=embed devuelve la vista embebible sin API key.
+export const URL_GOOGLE_MAPS_EMBED = `https://www.google.com/maps?q=${encodeURIComponent(DIRECCION)}&output=embed`
+
+// Enlace alternativo a Google Maps para abrir la ubicación fuera del sitio
+// (RF-10.2): por si el iframe no carga o el visitante prefiere abrirlo en
+// Google Maps directamente. Misma fuente (DIRECCION), sin datos inventados.
+export const URL_GOOGLE_MAPS = `https://www.google.com/maps?q=${encodeURIComponent(DIRECCION)}`
