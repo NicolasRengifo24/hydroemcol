@@ -386,27 +386,42 @@ La automatización completa de WhatsApp queda para una fase posterior.
 
 El seguimiento web sigue siendo la fuente oficial.
 
-14. ESTADOS DEL SERVICIO
+14. ESTADOS DEL SERVICIO Y DEL COMPONENTE
 
-Estados definidos inicialmente:
+Catálogo cerrado aprobado en la spec 008 (§4). Estado del servicio, 4 valores:
 
-SOLICITADO
-EN_REVISION
-COTIZANDO
-ESPERANDO_APROBACION
-EN_REPARACION
-EN_PRUEBAS
-FINALIZADO
-LISTO_PARA_ENTREGA
-ENTREGADO
-NO_APROBADO
-CANCELADO
+SOLICITADO (Solicitado)
+EN_CURSO (En curso)
+FINALIZADO (Finalizado)
+CANCELADO (Cancelado)
 
-Cualquier usuario administrativo puede cambiar estados.
+Estado del componente, 8 valores:
 
-El agente debe considerar si conviene validar las transiciones permitidas en backend.
+PENDIENTE (Pendiente)
+EN_REVISION (En revisión)
+COTIZANDO (Cotizando)
+ESPERANDO_APROBACION (Esperando aprobación)
+OPERARIO_TRABAJANDO (Operario trabajando)
+EN_PRUEBAS (En pruebas)
+LISTO_PARA_ENTREGA (Listo para entrega)
+RECHAZADO (Rechazado)
 
-Si esa política aún no está definida, debe preguntarla antes de bloquear transiciones.
+Servicio en curso: SOLICITADO o EN_CURSO. Servicio cerrado: FINALIZADO o CANCELADO; un servicio
+cerrado no admite cambios de estado.
+
+Reglas de cambio de estado (spec 008):
+
+- El único rol es el ADMINISTRATIVO: el técnico es el administrativo. Solo él cambia estados.
+- Todo cambio de estado sigue la tabla de transiciones de la spec 008 y se valida en backend; una
+  transición no listada se rechaza sin modificar datos. La interfaz solo presenta las opciones que
+  el backend entrega.
+- El cliente no cambia estados: su única acción es aprobar o rechazar la cotización desde el
+  seguimiento con su token. El rechazo de una cotización no cambia el estado del componente: lo
+  deja en ESPERANDO_APROBACION.
+- RECHAZADO no es un paso del recorrido normal: solo lo alcanza el administrador con una
+  finalización manual que registra motivo (texto libre) y fecha.
+- El servicio pasa de SOLICITADO a EN_CURSO cuando el primer componente sale de PENDIENTE, y se
+  finaliza o se cancela manualmente (la cancelación exige comentario).
 
 15. APROBACIONES
 
@@ -818,21 +833,34 @@ Ejemplo:
 
 Servicio: SRV-2026-00125
 
-Estado actual:
-EN REPARACION
+Estado actual: En curso (EN_CURSO)
 
 Componentes:
 
-- Bomba hidráulica
-- Válvula
+- Bomba hidráulica — En pruebas
+- Válvula — Esperando aprobación
 
-Historial:
-✓ Solicitud recibida
-✓ Cotización enviada
-✓ Cotización aprobada
-✓ Reparación iniciada
+Línea de tiempo pública, 4 pasos (spec 008, RF-FLU-15):
+
+✓ Recibido
+✓ Revisión y cotización
 ○ Pruebas
-○ Entrega
+○ Finalizado
+
+Pasos del flujo de un componente (spec 008, §4.1):
+
+PENDIENTE → EN_REVISION → COTIZANDO → ESPERANDO_APROBACION → OPERARIO_TRABAJANDO → EN_PRUEBAS → LISTO_PARA_ENTREGA
+
+Con estos matices:
+
+- RECHAZADO no es un paso del recorrido normal: solo lo registra el administrador al finalizar el
+  componente, con motivo y fecha.
+- Registrar una cotización mientras el componente está en COTIZANDO, OPERARIO_TRABAJANDO,
+  EN_PRUEBAS o LISTO_PARA_ENTREGA lo lleva a ESPERANDO_APROBACION conservando su fase y su
+  progreso; al aprobarla continúa el trabajo, salvo cuando la espera vino de LISTO_PARA_ENTREGA,
+  en cuyo caso vuelve a EN_PRUEBAS.
+- El servicio pasa de SOLICITADO a EN_CURSO con el primer componente que sale de PENDIENTE y
+  termina en FINALIZADO (cierre manual) o CANCELADO.
 
 Si hay cotización pendiente:
 
