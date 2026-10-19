@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import { MessageCircle, Phone } from 'lucide-react'
 import { SeccionEncabezado } from './SeccionEncabezado'
 import { urlWhatsApp, urlLlamada, NUMERO_CONTACTO_MOSTRADO } from '../../config/sitio'
+import { useAparecerAlEntrar } from '../../hooks/useAparecerAlEntrar'
 import './inicio.css'
 
 interface CTASectionProps {
@@ -16,14 +17,21 @@ interface CTASectionProps {
 }
 
 export function CTASection({ id = 'cta-final' }: CTASectionProps) {
+  const { ref, visible } = useAparecerAlEntrar<HTMLElement>()
+
   return (
-    <section className="seccion seccion--cta" aria-labelledby={id}>
+    <section
+      ref={ref}
+      className={`seccion seccion--cta revelar${visible ? ' revelar--visible' : ''}`}
+      aria-labelledby={id}
+    >
+      <span className="cta__patron" aria-hidden="true" />
       <SeccionEncabezado id={id} nivel={2} titulo="Solicita tu servicio" />
       <div className="cta__acciones">
         <Link to="/solicitar" className="cta__accion cta__accion--principal">
           Solicitar un servicio
         </Link>
-        <Link to="/seguimiento/demo" className="cta__accion cta__accion--secundaria">
+        <Link to="/seguimiento" className="cta__accion cta__accion--secundaria">
           Hacer seguimiento
         </Link>
         <div className="cta__contacto">
@@ -35,6 +43,7 @@ export function CTASection({ id = 'cta-final' }: CTASectionProps) {
           >
             <MessageCircle className="cta__icono" size={20} aria-hidden="true" />
             Escribir por WhatsApp
+            <span className="sr-only"> (se abre en una pestaña nueva)</span>
           </a>
           <a className="cta__accion cta__accion--secundaria" href={urlLlamada()}>
             <Phone className="cta__icono" size={20} aria-hidden="true" />

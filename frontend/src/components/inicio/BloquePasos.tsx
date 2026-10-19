@@ -7,6 +7,7 @@
 import { SeccionEncabezado } from './SeccionEncabezado'
 import type { Paso } from './contenido'
 import { PASOS } from './contenido'
+import { useAparecerAlEntrar } from '../../hooks/useAparecerAlEntrar'
 import './inicio.css'
 
 interface BloquePasosProps {
@@ -15,8 +16,14 @@ interface BloquePasosProps {
 }
 
 export function BloquePasos({ pasos = PASOS, id = 'como-funciona' }: BloquePasosProps) {
+  const { ref, visible } = useAparecerAlEntrar<HTMLElement>()
+
   return (
-    <section className="seccion seccion--pasos" aria-labelledby={id}>
+    <section
+      ref={ref}
+      className={`seccion seccion--pasos revelar${visible ? ' revelar--visible' : ''}`}
+      aria-labelledby={id}
+    >
       <SeccionEncabezado id={id} nivel={2} titulo="Cómo funciona el servicio" />
       <ol className="pasos">
         {pasos.map((paso) => (

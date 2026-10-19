@@ -1,77 +1,90 @@
-import { useEffect, useRef, useState } from 'react'
-import { Play, Pause } from 'lucide-react'
-import './inicio.css'
+import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
+import "./inicio.css";
 
 interface BloqueVideoProps {
-  titulo: string
-  descripcion?: string
-  src?: string // por defecto '/vid/video-banco-prueba.mp4'
-  id?: string
-  poster?: string
+  titulo: string;
+  descripcion?: string;
+  src?: string; // por defecto '/vid/video-banco-prueba.mp4'
+  id?: string;
+  poster?: string;
 }
 
 export function BloqueVideo({
   titulo,
   descripcion,
-  src = '/vid/video-banco-prueba.mp4',
+  src = "/vid/video-banco-prueba.mp4",
   id,
   poster,
 }: BloqueVideoProps) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [hayError, setHayError] = useState(false)
-  const [reproduciendo, setReproduciendo] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null);
+  // hayError: el archivo no carga (sustituye todo el bloque por un aviso).
+  // avisoReproduccion: el navegador rechazó play(); el video sigue disponible.
+  const [hayError, setHayError] = useState(false);
+  const [avisoReproduccion, setAvisoReproduccion] = useState(false);
+  const [reproduciendo, setReproduciendo] = useState(false);
 
   const [reducirMovimiento, setReducirMovimiento] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false
-  )
+    typeof window !== "undefined"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      : false,
+  );
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     const handleChange = (event: MediaQueryListEvent) => {
-      setReducirMovimiento(event.matches)
-    }
+      setReducirMovimiento(event.matches);
+    };
 
     if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange)
+      mediaQuery.addEventListener("change", handleChange);
     } else {
-      mediaQuery.addListener(handleChange)
+      mediaQuery.addListener(handleChange);
     }
 
     return () => {
       if (mediaQuery.removeEventListener) {
-        mediaQuery.removeEventListener('change', handleChange)
+        mediaQuery.removeEventListener("change", handleChange);
       } else {
-        mediaQuery.removeListener(handleChange)
+        mediaQuery.removeListener(handleChange);
       }
-    }
-  }, [])
+    };
+  }, []);
 
   const toggleReproduccion = () => {
-    if (!videoRef.current) return
+    if (!videoRef.current) return;
 
     if (reproduciendo) {
-      videoRef.current.pause()
+      videoRef.current.pause();
     } else {
       videoRef.current.play().catch(() => {
-        // Ignorar errores de reproducción automática (p.ej. políticas del navegador)
-        setHayError(true)
-      })
+        // Un rechazo de play() (política del navegador, pausa rápida) no es un fallo del archivo.
+        setAvisoReproduccion(true);
+      });
     }
-  }
+  };
 
   const handlePlay = () => {
-    setReproduciendo(true)
-  }
+    setAvisoReproduccion(false);
+    setReproduciendo(true);
+  };
 
   const handlePause = () => {
-    setReproduciendo(false)
-  }
+    setReproduciendo(false);
+  };
 
   const handleError = () => {
-    setHayError(true)
-    setReproduciendo(false)
-  }
+    setHayError(true);
+    setReproduciendo(false);
+  };
+
+  const handleVideoKeyDown = (event: KeyboardEvent<HTMLVideoElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleReproduccion();
+    }
+  };
 
   if (hayError) {
     return (
@@ -82,38 +95,39 @@ export function BloqueVideo({
           El video del banco de pruebas no está disponible.
         </div>
       </figure>
-    )
+    );
   }
 
   return (
     <figure className="video" id={id}>
       <figcaption className="video__titulo">{titulo}</figcaption>
       {descripcion && <p className="video__descripcion">{descripcion}</p>}
-      <video
-        ref={videoRef}
-        className="video__elemento"
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        poster={poster}
-        autoPlay={!reducirMovimiento}
-        src={src}
-        onPlay={handlePlay}
-        onPause={handlePause}
-        onError={handleError}
-      />
-      <button
-        type="button"
-        className="video__control"
-        onClick={toggleReproduccion}
-        aria-pressed={reproduciendo}
-      >
-        {reproduciendo ? <Pause size={20} aria-hidden="true" /> : <Play size={20} aria-hidden="true" />}
-        <span className="video__control-text">
-          {reproduciendo ? 'Pausar video' : 'Reproducir video'}
-        </span>
-      </button>
+      <div className="video__marco">
+        <video
+          ref={videoRef}
+          className="video__elemento"
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          poster={poster}
+          autoPlay={!reducirMovimiento}
+          src={src}
+          role="button"
+          tabIndex={0}
+          aria-label={reproduciendo ? "Pausar video" : "Reproducir video"}
+          onClick={toggleReproduccion}
+          onKeyDown={handleVideoKeyDown}
+          onPlay={handlePlay}
+          onPause={handlePause}
+          onError={handleError}
+        />
+      </div>
+      {avisoReproduccion && (
+        <p className="video__aviso" role="status" aria-live="polite">
+          No se pudo iniciar la reproducción. Vuelve a intentarlo.
+        </p>
+      )}
     </figure>
-  )
+  );
 }

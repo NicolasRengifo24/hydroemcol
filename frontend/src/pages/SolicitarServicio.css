@@ -72,9 +72,9 @@
   resize: vertical;
 }
 
-.solicitud-form .solicitud-input[aria-invalid='true'],
-.solicitud-form textarea[aria-invalid='true'],
-.solicitud-form .solicitud-file-input[aria-invalid='true'] {
+.solicitud-form .solicitud-input[aria-invalid="true"],
+.solicitud-form textarea[aria-invalid="true"],
+.solicitud-form .solicitud-file-input[aria-invalid="true"] {
   border-color: var(--solicitud-error);
 }
 
@@ -111,7 +111,7 @@
   cursor: pointer;
 }
 
-.solicitud-form .solicitud-check input[type='checkbox'] {
+.solicitud-form .solicitud-check input[type="checkbox"] {
   width: 1.15rem;
   height: 1.15rem;
   flex: none;
@@ -370,5 +370,173 @@
   .solicitud-actions .solicitud-btn {
     width: auto;
     min-width: 240px;
+  }
+}
+
+/* ---------- Tratamiento visual industrial ---------- */
+
+.solicitud-page {
+  max-width: 920px;
+  padding-bottom: 3rem;
+}
+
+.solicitud-page > h1 {
+  margin-bottom: 0.65rem;
+  color: var(--color-primary-dark);
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.65rem);
+  line-height: 1.1;
+}
+
+.solicitud-intro {
+  max-width: 68ch;
+  margin-bottom: 2rem;
+  padding: 1rem 1.15rem;
+  border-left: 4px solid var(--color-accent);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+  background: linear-gradient(
+    120deg,
+    var(--color-primary-soft),
+    var(--color-white)
+  );
+  line-height: 1.7;
+}
+
+.solicitud-form {
+  counter-reset: solicitud-seccion;
+}
+
+.solicitud-form fieldset {
+  counter-increment: solicitud-seccion;
+  position: relative;
+  margin-bottom: 1.5rem;
+  padding: 1.45rem clamp(1rem, 3vw, 1.5rem) 1.5rem;
+  border: 1px solid var(--color-border);
+  border-top: 4px solid var(--color-primary);
+  border-radius: var(--radius-card);
+  background: var(--color-white);
+  box-shadow: var(--sombra-tarjeta);
+}
+
+.solicitud-form legend {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0 0.5rem;
+  color: var(--color-primary-dark);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.solicitud-form legend::before {
+  display: inline-grid;
+  width: 1.7rem;
+  height: 1.7rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--degradado-marca);
+  color: var(--color-white);
+  content: counter(solicitud-seccion);
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+}
+
+.solicitud-form .solicitud-campo-label {
+  color: var(--color-primary-dark);
+  font-weight: 700;
+}
+
+.solicitud-form .solicitud-input,
+.solicitud-form select,
+.solicitud-form textarea {
+  border-color: #bdc9d3;
+  background: #fbfcfd;
+  transition:
+    border-color 160ms ease-out,
+    box-shadow 160ms ease-out,
+    background 160ms ease-out;
+}
+
+.solicitud-form .solicitud-input:hover,
+.solicitud-form textarea:hover,
+.solicitud-form select:hover {
+  border-color: var(--color-primary);
+  background: var(--color-white);
+}
+
+.solicitud-form .solicitud-input:focus-visible,
+.solicitud-form select:focus-visible,
+.solicitud-form textarea:focus-visible {
+  border-color: var(--color-primary);
+  outline: 3px solid var(--color-primary-soft);
+  outline-offset: 0;
+  background: var(--color-white);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.solicitud-componente {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-accent);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+  background: linear-gradient(120deg, var(--color-bg-alt), var(--color-white));
+}
+
+.solicitud-componente-titulo {
+  color: var(--color-primary-dark);
+  font-family: var(--font-display);
+}
+
+.solicitud-form .solicitud-check {
+  margin: 0.35rem 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: var(--color-bg-alt);
+}
+
+.solicitud-form .solicitud-check:hover {
+  border-color: var(--color-border);
+  background: var(--color-primary-soft);
+}
+
+.solicitud-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.solicitud-actions .solicitud-btn-primary {
+  min-width: min(100%, 18rem);
+  background: var(--degradado-acento);
+  border-color: var(--color-accent);
+  color: var(--color-primary-dark);
+  box-shadow: 0 8px 18px rgb(35 38 110 / 16%);
+}
+
+.solicitud-actions .solicitud-btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+.solicitud-form .solicitud-foto {
+  border-radius: var(--radius-control);
+  box-shadow: 0 3px 10px rgb(35 38 110 / 8%);
+}
+
+.solicitud-panel {
+  border-radius: var(--radius-card);
+  box-shadow: var(--sombra-tarjeta);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .solicitud-form .solicitud-input,
+  .solicitud-form select,
+  .solicitud-form textarea {
+    transition: none;
   }
 }

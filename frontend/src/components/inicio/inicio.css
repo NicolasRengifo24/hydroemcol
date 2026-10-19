@@ -1,20 +1,72 @@
 /* Estilos de la página de inicio (specs/003-pagina-inicio).
-    Reutilizan los tokens definidos en src/index.css
-    (--color-primary, --color-primary-dark, --color-primary-soft,
-    --color-accent, --color-accent-soft, --color-bg, --color-bg-alt,
-    --color-text, --color-text-muted, --color-border, --color-white,
-    --font-display) sin redefinir colores de marca.
+    Reutilizan los tokens definidos en src/index.css (colores de marca, tipografía
+    y los tokens de diseño --radius-card, --sombra-tarjeta, --degradado-acento,
+    --degradado-marca, --color-primary-deep) sin redefinir colores de marca.
 
-    Las utilidades de las secciones (hero, servicios destacados, capacidad
-    técnica, pasos y llamada a la acción) se añadirán en tareas posteriores. */
+    Sistema de tarjetas:
+    - Informativas (.tarjeta): fondo con degradado sutil, borde superior azul de marca.
+      Al pasar el puntero solo cambian borde y fondo (RF-3.3), sin elevación.
+    - Interactivas (.tarjeta--interactiva, solo si tienen enlace): elevación al pasar el puntero.
+    - Hero (.tarjeta--hero): vidrio blanco translúcido con backdrop-filter, sobre la foto.
+
+    Animación: solo entrada suave por CSS. Todo el movimiento va bajo
+    (prefers-reduced-motion: no-preference); con reducción de movimiento no hay
+    animaciones ni elementos ocultos. */
+
+/* ---------- Secciones ---------- */
 
 .seccion {
   margin-top: 3rem;
-  scroll-margin-top: 4.5rem;
+  scroll-margin-top: 5rem;
+}
+
+.seccion--servicios,
+.seccion--capacidad,
+.seccion--pasos {
+  padding: 2rem 1.25rem;
+  border-radius: 16px;
+}
+
+.seccion--servicios {
+  background: linear-gradient(
+    180deg,
+    var(--color-bg-alt) 0%,
+    var(--color-white) 100%
+  );
+}
+
+.seccion--capacidad {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-soft) 0%,
+    var(--color-white) 70%
+  );
+}
+
+.seccion--pasos {
+  background: linear-gradient(
+    180deg,
+    var(--color-white) 0%,
+    var(--color-bg-alt) 100%
+  );
 }
 
 .seccion__encabezado {
-  margin-bottom: 1rem;
+  position: relative;
+  margin-bottom: 1.25rem;
+  padding-left: 0.9rem;
+}
+
+/* Barra de acento a la izquierda de cada título de sección. */
+.seccion__encabezado::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--degradado-acento);
 }
 
 .rejilla {
@@ -45,16 +97,38 @@
   line-height: 1.6;
 }
 
+/* ---------- Sistema de tarjetas ---------- */
+
 .tarjeta {
-  background: var(--color-white);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02), 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-  transition: transform 150ms ease-out, box-shadow 150ms ease-out, border-color 150ms ease-out;
+  position: relative;
   min-width: 0;
   overflow-wrap: break-word;
-  position: relative;
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-top: 4px solid var(--color-primary);
+  border-radius: var(--radius-card);
+  background: linear-gradient(180deg, var(--color-white) 0%, #f6f8fc 100%);
+  box-shadow: var(--sombra-tarjeta);
+}
+
+.tarjeta__icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: 0.75rem;
+  border-radius: 10px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px rgb(46 49 146 / 14%);
+}
+
+.tarjeta__icono--linea {
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
 }
 
 .tarjeta__titulo {
@@ -77,25 +151,38 @@
   flex-direction: column;
 }
 
+/* Servicios destacados: cuatro cards alineadas en escritorio. */
+@media (min-width: 1024px) {
+  .rejilla--destacados {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+  }
+}
+
+.rejilla--destacados > .tarjeta {
+  height: 100%;
+}
+
 .tarjeta__carrusel {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--color-border);
 }
 
-.tarjeta:hover,
-.tarjeta:active {
-  transform: translateY(-2px);
-  border-color: var(--color-accent);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+/* Tarjeta informativa (RF-3.3): al pasar el puntero solo cambian borde y fondo. */
+.tarjeta:hover {
+  border-top-color: var(--color-accent);
+  background: linear-gradient(
+    180deg,
+    var(--color-white) 0%,
+    var(--color-primary-soft) 100%
+  );
 }
 
-.tarjeta:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  transform: translateY(-2px);
-  border-color: var(--color-accent);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+/* Tarjeta interactiva (con enlace): además se eleva. */
+.tarjeta--interactiva:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--sombra-tarjeta-elevada);
 }
 
 .tarjeta__enlace {
@@ -112,67 +199,129 @@
   box-shadow: 0 0 0 6px var(--color-accent);
 }
 
-@keyframes tarjeta-entrada {
+/* Tarjetas del hero: vidrio blanco translúcido sobre la foto, con texto blanco. */
+.tarjeta--hero {
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 26%);
+  border-top: 4px solid var(--color-accent);
+  color: var(--color-white);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 20%);
+}
+
+.tarjeta--hero:hover {
+  background: rgb(255 255 255 / 18%);
+  border-color: rgb(255 255 255 / 40%);
+  border-top-color: var(--color-accent);
+}
+
+.tarjeta--hero .tarjeta__titulo {
+  color: var(--color-white);
+}
+
+.tarjeta--hero .tarjeta__descripcion {
+  color: rgb(255 255 255 / 88%);
+}
+
+.tarjeta--hero .tarjeta__icono {
+  background: var(--color-accent);
+  color: var(--color-primary-dark);
+  box-shadow: none;
+}
+
+/* ---------- Entrada suave (solo con movimiento permitido) ---------- */
+
+@keyframes hero-entrada {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
-.tarjeta--animada {
-  animation: tarjeta-entrada 400ms ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tarjeta {
-    transition: none;
+@keyframes tarjeta-entrada {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
   }
-
-  .tarjeta--animada {
-    animation: none;
+  to {
     opacity: 1;
     transform: none;
   }
+}
 
-  .tarjeta:hover,
-  .tarjeta:active,
-  .tarjeta:focus-visible {
-    transition: none;
+@media (prefers-reduced-motion: no-preference) {
+  .tarjeta {
+    transition:
+      border-color 220ms ease-out,
+      background 220ms ease-out,
+      box-shadow 220ms ease-out,
+      transform 220ms ease-out;
+  }
+
+  .tarjeta--animada {
+    animation: tarjeta-entrada 520ms ease-out both;
+  }
+
+  .hero__texto {
+    animation: hero-entrada 600ms ease-out both;
+  }
+
+  /* Secciones que aparecen al entrar en la ventana (useAparecerAlEntrar). */
+  .revelar {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 560ms ease-out,
+      transform 560ms ease-out;
+  }
+
+  .revelar.revelar--visible {
+    opacity: 1;
     transform: none;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02), 0 1px 3px 0 rgba(0, 0, 0, 0.05);
   }
 }
 
-/* Estilos de los tres componentes nuevos */
-.seccion--capacidad {
-  margin-top: 3rem;
-}
+/* ---------- Componentes y capacidad técnica ---------- */
 
 .capacidad__contenido {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
   margin-top: 1rem;
 }
 
+/* Capacidad técnica: dos columnas en tablet y escritorio. */
+@media (min-width: 768px) {
+  .capacidad__contenido {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
 .capacidad__bloque {
-  background: var(--color-white);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02), 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  position: relative;
   min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-top: 4px solid var(--color-primary);
+  border-radius: var(--radius-card);
+  background: linear-gradient(180deg, var(--color-white) 0%, #f6f8fc 100%);
+  box-shadow: var(--sombra-tarjeta);
 }
 
 .capacidad__subtitulo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   font-family: var(--font-display);
   font-weight: 600;
   color: var(--color-primary);
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.9rem;
   font-size: 1.05rem;
   line-height: 1.3;
 }
@@ -191,32 +340,50 @@
   line-height: 1.6;
 }
 
+.lista__item::marker {
+  color: var(--color-primary);
+}
+
 .marcas {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
 .marcas__item {
-  background: var(--color-bg-alt);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 0.375rem 0.75rem;
-  color: var(--color-text);
-  font-size: 1rem;
-  line-height: 1.4;
-  word-break: break-word;
+  display: grid;
   min-width: 0;
+  min-height: 5rem;
+  aspect-ratio: 1.65;
+  place-items: center;
+  background: linear-gradient(
+    180deg,
+    var(--color-white) 0%,
+    var(--color-bg-alt) 100%
+  );
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 0.6rem;
+  overflow: hidden;
+  box-shadow: 0 3px 10px rgb(33 33 33 / 8%);
 }
 
 .marcas__logo {
   display: block;
-  max-height: 2rem;
-  width: auto;
-  margin-top: 0.375rem;
+  width: 100%;
+  max-width: 9rem;
+  height: 3.25rem;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+@media (min-width: 640px) {
+  .marcas {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .video {
@@ -242,41 +409,25 @@
   line-height: 1.6;
 }
 
-.video__elemento {
+.video__marco {
   width: 100%;
-  height: auto;
   max-width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   border: 1px solid var(--color-border);
-  background: var(--color-bg-alt);
-  display: block;
-}
-
-.video__control {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--color-primary);
-  color: var(--color-white);
-  border: 2px solid transparent;
-  border-radius: 6px;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  min-height: 44px;
-  min-width: 44px;
-  align-self: flex-start;
-  transition: background 150ms ease-out, border-color 150ms ease-out;
-}
-
-.video__control:hover,
-.video__control:active {
   background: var(--color-primary-dark);
+  overflow: hidden;
 }
 
-.video__control:focus-visible {
+.video__elemento {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  cursor: pointer;
+}
+
+.video__elemento:focus-visible {
   outline: 3px solid var(--color-primary);
   outline-offset: 3px;
   box-shadow: 0 0 0 6px var(--color-accent);
@@ -292,18 +443,8 @@
   line-height: 1.6;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .video__control {
-    transition: none;
-  }
-  .video__control:hover,
-  .video__control:active,
-  .video__control:focus-visible {
-    transition: none;
-  }
-}
+/* ---------- Cómo funciona el servicio ---------- */
 
-/* Estilos de la sección "Cómo funciona el servicio" */
 .pasos {
   list-style: none;
   margin: 1rem 0 0;
@@ -314,13 +455,15 @@
 }
 
 .paso {
-  background: var(--color-white);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02), 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  position: relative;
   min-width: 0;
   overflow-wrap: break-word;
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-top: 4px solid var(--color-accent);
+  border-radius: var(--radius-card);
+  background: linear-gradient(180deg, var(--color-white) 0%, #f6f8fc 100%);
+  box-shadow: var(--sombra-tarjeta);
 }
 
 .paso__numero {
@@ -330,13 +473,14 @@
   width: 2.25rem;
   height: 2.25rem;
   border-radius: 50%;
-  background: var(--color-primary);
+  background: var(--degradado-marca);
   color: var(--color-white);
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.05rem;
   line-height: 1;
   margin-bottom: 0.5rem;
+  box-shadow: 0 4px 10px rgb(35 38 110 / 25%);
 }
 
 .paso__titulo {
@@ -354,56 +498,119 @@
   line-height: 1.6;
 }
 
-@media (min-width: 768px) {
+/* Pasos: cinco columnas con línea conectora en escritorio; lista vertical en móvil. */
+@media (min-width: 900px) {
   .pasos {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1.25rem;
+  }
+
+  /* Línea desde el borde derecho del círculo hasta el siguiente paso. */
+  .paso:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 2.6rem;
+    left: 3.6rem;
+    right: -1.25rem;
+    height: 2px;
+    background: var(--color-accent);
   }
 }
 
-/* Estilos de la sección de llamado a la acción final (RF-7, RF-9) */
+/* ---------- Llamado a la acción final (RF-7, RF-9) ---------- */
+
+/* Banda oscura con degradado de marca, patrón geométrico CSS decorativo y
+   acción principal en acento amarillo con texto oscuro (contraste ~8.6:1). */
 .seccion--cta {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   margin-top: 3rem;
+  padding: 2.25rem 1.25rem;
+  border-radius: 16px;
+  color: var(--color-white);
+  background:
+    radial-gradient(circle at 88% 0%, rgb(255 201 8 / 18%), transparent 46%),
+    linear-gradient(
+      135deg,
+      var(--color-primary-dark) 0%,
+      var(--color-primary-deep) 100%
+    );
+}
+
+.cta__patron {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgb(255 255 255 / 6%) 0 1px,
+      transparent 1px 22px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgb(255 255 255 / 4%) 0 1px,
+      transparent 1px 22px
+    );
+}
+
+.seccion--cta .seccion__titulo {
+  color: var(--color-white);
+}
+
+.seccion--cta .seccion__encabezado::before {
+  background: var(--color-accent);
+}
+
+.seccion--cta .cta__accion--principal {
+  background: var(--degradado-acento);
+  color: var(--color-primary-dark);
+}
+
+.seccion--cta .cta__accion--principal:hover,
+.seccion--cta .cta__accion--principal:active {
+  background: var(--color-accent-hover);
 }
 
 .cta__acciones {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
-  margin-top: 1rem;
 }
 
 .cta__contacto {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
-  min-width: 0;
 }
 
-.cta__accion {
+.seccion--cta .cta__accion {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  min-width: 0;
   min-height: 44px;
   padding: 0.75rem 1.25rem;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   border: 2px solid transparent;
   font-weight: 600;
   font-size: 1rem;
   line-height: 1.3;
   text-align: center;
   text-decoration: none;
-  transition: background 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out;
 }
 
 .cta__accion--principal {
-  background: var(--color-primary);
-  color: var(--color-white);
+  background: var(--degradado-acento);
+  color: var(--color-primary-dark);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 18%);
 }
 
 .cta__accion--principal:hover,
 .cta__accion--principal:active {
-  background: var(--color-primary-dark);
+  background: var(--color-accent-hover);
 }
 
 .cta__accion--secundaria {
@@ -430,35 +637,99 @@
 
 .cta__numero {
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
+/* Tablet: principal y seguimiento en una fila; los dos canales de contacto ocupan
+   la fila inferior, uno al lado del otro. */
 @media (min-width: 640px) {
   .cta__acciones {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .cta__accion {
-    transition: none;
+  .cta__contacto {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-/* Hero (RF-2): primera sección de la página de inicio. Móvil primero,
-   sin desbordes horizontales en ninguna anchura (RNF-1, RF-2.7). */
+/* Escritorio: cuatro acciones alineadas en una fila. */
+@media (min-width: 1024px) {
+  .cta__acciones {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .cta__contacto {
+    display: contents;
+  }
+
+  .cta__acciones > .cta__accion {
+    width: 100%;
+  }
+
+  .seccion--cta .cta__accion {
+    gap: 0.35rem;
+    padding-inline: 0.7rem;
+    font-size: 0.95rem;
+  }
+}
+
+/* ---------- Hero (RF-2): a pantalla completa, sin desbordes horizontales ---------- */
+
 .hero {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  margin-top: 1.5rem;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
   min-width: 0;
+  padding: 2.5rem 1.25rem 2rem;
+  color: var(--color-white);
+  background: var(--color-primary-dark);
+}
+
+.hero__fondo {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 70% 50%;
+}
+
+.hero__velo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgb(35 38 110 / 78%) 0%,
+    rgb(35 38 110 / 68%) 55%,
+    rgb(35 38 110 / 84%) 100%
+  );
+}
+
+.hero__contenido {
+  display: grid;
+  gap: 1.75rem;
+  min-width: 0;
+}
+
+.hero__texto {
+  display: grid;
+  gap: 1.25rem;
+  justify-items: start;
+  min-width: 0;
+  max-width: 46rem;
 }
 
 .hero__mensaje {
   font-family: var(--font-display);
   font-weight: 700;
-  color: var(--color-primary);
+  color: var(--color-white);
   margin: 0;
   font-size: clamp(1.75rem, 6vw, 2.75rem);
   line-height: 1.15;
@@ -473,50 +744,67 @@
   align-self: flex-start;
   min-height: 44px;
   padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  background: var(--color-primary);
-  color: var(--color-white);
+  border-radius: var(--radius-control);
+  background: var(--degradado-acento);
+  color: var(--color-primary-dark);
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 1rem;
   line-height: 1.3;
   text-align: center;
   text-decoration: none;
-  transition: background 150ms ease-out;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 22%);
 }
 
 .hero__cta:hover,
 .hero__cta:active {
-  background: var(--color-primary-dark);
+  background: var(--color-accent-hover);
 }
 
 .hero__cta:focus-visible {
-  outline: 3px solid var(--color-primary);
+  outline: 3px solid var(--color-white);
   outline-offset: 3px;
-  box-shadow: 0 0 0 6px var(--color-accent);
+  box-shadow: 0 0 0 6px var(--color-primary-dark);
 }
 
 .hero__tarjetas {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 1rem;
+  gap: 0.875rem;
 }
 
 @media (min-width: 768px) {
+  .hero {
+    padding: 3.5rem 2rem 2.75rem;
+  }
+
   .hero__tarjetas {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-/* RNF-8: con reducir movimiento, el CTA no transiciona y las tarjetas del hero
-   quedan completas y estáticas por las reglas de `.tarjeta--animada` de arriba. */
+@media (min-width: 900px) {
+  .hero {
+    padding: 4.5rem 3rem 3rem;
+  }
+
+  .hero__mensaje {
+    font-size: clamp(2rem, 3.2vw, 3.2rem);
+  }
+}
+
+/* RNF-8: con reducción de movimiento no hay animaciones de entrada; el contenido queda visible. */
 @media (prefers-reduced-motion: reduce) {
-  .hero__cta {
+  .hero__cta,
+  .tarjeta,
+  .cta__accion,
+  .tarjeta__enlace {
     transition: none;
   }
 }
 
-/* Carrusel de productos de Importación Sobre Pedido (RF-4.5–4.8). */
+/* ---------- Carrusel de productos de Importación Sobre Pedido (RF-4.5–4.8) ---------- */
+
 .carrusel {
   display: flex;
   flex-direction: column;
@@ -537,7 +825,7 @@
   overflow: hidden;
   background: var(--color-bg-alt);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
 }
 
 .carrusel__imagen {
@@ -606,11 +894,5 @@
 @media (min-width: 640px) {
   .carrusel__marco {
     min-height: 16rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .carrusel__control {
-    transition: none;
   }
 }

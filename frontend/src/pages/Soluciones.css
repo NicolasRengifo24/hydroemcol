@@ -1,0 +1,206 @@
+/* Vista de soluciones: presentación visual de productos y servicios reales. */
+
+.soluciones-page {
+  --soluciones-ink: var(--color-primary-dark);
+  --soluciones-muted: var(--color-text-muted);
+  --soluciones-line: var(--color-border);
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1rem 4rem;
+}
+
+.soluciones-hero {
+  position: relative;
+  display: grid;
+  min-height: clamp(30rem, 62vw, 43rem);
+  margin-inline: calc(50% - 50vw);
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--color-primary-deep);
+}
+
+.soluciones-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-position: center;
+  background-size: cover;
+}
+
+.soluciones-hero--productos::before {
+  background-image: url("/img/soluciones/hero-productos.png");
+}
+
+.soluciones-hero--productos {
+  min-height: clamp(22rem, 46vw, 32rem);
+}
+
+.soluciones-hero--servicios::before {
+  background-image: url("/img/soluciones/hero-servicios.png");
+}
+
+.soluciones-hero__contenido {
+  align-self: center;
+  width: min(100% - 2rem, 31rem);
+  margin: 1rem;
+  padding: clamp(1.1rem, 3vw, 2rem);
+  color: var(--color-white);
+  border-left: 4px solid var(--color-accent);
+  background: rgb(12 27 65 / 80%);
+  box-shadow: 0 16px 34px rgb(0 0 0 / 20%);
+  backdrop-filter: blur(5px);
+}
+
+.soluciones-hero--servicios .soluciones-hero__contenido {
+  justify-self: end;
+}
+
+.soluciones-hero__eyebrow,
+.soluciones-section__eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.soluciones-hero__titulo {
+  max-width: 22ch;
+  margin: 0;
+  color: var(--color-white);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 5vw, 3.5rem);
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.soluciones-hero__texto {
+  max-width: 50ch;
+  margin: 1rem 0 0;
+  color: rgb(255 255 255 / 88%);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.soluciones-section {
+  padding: clamp(2rem, 5vw, 4rem) 0 0;
+}
+
+.soluciones-section__encabezado {
+  max-width: 48rem;
+  margin-bottom: 1.25rem;
+}
+
+.soluciones-section__titulo {
+  margin: 0;
+  color: var(--soluciones-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.55rem, 3vw, 2.35rem);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.soluciones-section__intro {
+  max-width: 58ch;
+  margin: 0.75rem 0 0;
+  color: var(--soluciones-muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.soluciones-galeria {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.solucion-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--soluciones-line);
+  border-radius: var(--radius-card);
+  background: var(--color-white);
+  box-shadow: 0 8px 22px rgb(16 42 67 / 9%);
+}
+
+.solucion-card__imagen {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.solucion-card__contenido {
+  padding: 1rem 1.1rem 1.15rem;
+  border-top: 3px solid var(--color-accent);
+}
+
+.solucion-card__titulo {
+  margin: 0;
+  color: var(--soluciones-ink);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.solucion-card__texto {
+  margin: 0.45rem 0 0;
+  color: var(--soluciones-muted);
+  line-height: 1.55;
+}
+
+@media (min-width: 640px) {
+  .soluciones-page {
+    padding-inline: 1.5rem;
+  }
+
+  .soluciones-hero__contenido {
+    margin: 2rem;
+  }
+
+  .soluciones-galeria--productos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .soluciones-galeria--servicios {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .soluciones-hero__contenido {
+    margin: 3rem clamp(2rem, 8vw, 8rem);
+  }
+
+  .soluciones-hero--servicios .soluciones-hero__contenido {
+    margin-right: clamp(2rem, 8vw, 8rem);
+  }
+
+  .soluciones-galeria--servicios {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .solucion-card {
+    transition:
+      transform 180ms ease-out,
+      box-shadow 180ms ease-out;
+  }
+
+  .solucion-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 28px rgb(16 42 67 / 14%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .solucion-card {
+    transition: none;
+  }
+}

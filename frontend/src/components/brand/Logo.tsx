@@ -18,7 +18,7 @@ function Logo({ mostrarTexto = true, grande = false, sobreOscuro = false, classN
       <span className={clases.join(' ')}>
         <img
           src="/logo-completo.jpg"
-          alt="Hydroemcol Service and Parts S.A.S"
+          alt="Hydroemcol S.A.S"
           width={1059}
           height={232}
           decoding="async"
