@@ -64,6 +64,10 @@ function parsearErrores(err: unknown): { general: string | null; campos: Record<
   }
 
   const data = err.data
+  const detalle = data.detail
+  if (typeof detalle === 'string' && detalle) {
+    return { general: detalle, campos }
+  }
   for (const [clave, valor] of Object.entries(data)) {
     if (clave === 'non_field_errors') continue
     if (Array.isArray(valor) && valor.every((v) => typeof v === 'string')) {

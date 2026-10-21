@@ -10,6 +10,7 @@ referencia `r2://...` y las URLs firmadas se generan al serializar.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from pathlib import Path
 
@@ -17,6 +18,16 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 
 from .models import Fotografia, TipoFotografia
+
+logger = logging.getLogger('servicios.almacenamiento')
+
+
+class ErrorDeAlmacenamiento(Exception):
+    """El almacenamiento configurado no pudo guardar o borrar un archivo.
+
+    El mensaje original del proveedor (S3/R2) se conserva en el log del
+    servidor, nunca en la respuesta al cliente.
+    """
 
 
 def guardar_fotografias(servicio, archivos):
@@ -47,7 +58,17 @@ def guardar_fotografias(servicio, archivos):
 def guardar_fotografia(archivo):
     """Guarda un archivo y devuelve su referencia, sin conocer el proveedor."""
     nombre = f'fotografias/{uuid.uuid4().hex}_{Path(archivo.name).name}'
-    nombre_guardado = default_storage.save(nombre, archivo)
+    try:
+        nombre_guardado = default_storage.save(nombre, archivo)
+    except Exception as error:
+        # El detalle del proveedor (por ejemplo `AccessDenied` o
+        # `SignatureDoesNotMatch`) queda solo en el log del servidor.
+        logger.error(
+            'Fallo al guardar la fotografía en el almacenamiento: %s',
+            error,
+            exc_info=True,
+        )
+        raise ErrorDeAlmacenamiento(str(error)) from error
     if getattr(settings, 'R2_ENABLED', False):
         return f'{settings.R2_REFERENCE_PREFIX}{nombre_guardado}'
     return f'{settings.MEDIA_URL}{nombre_guardado}'

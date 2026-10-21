@@ -30,7 +30,7 @@ from .acciones import (
     eliminar_fotografia,
     desactivar_servicio,
 )
-from .almacenamiento import guardar_fotografias
+from .almacenamiento import ErrorDeAlmacenamiento, guardar_fotografias
 from .mensajes import construir_bloque_whatsapp
 from .models import (
     AprobacionServicio,
@@ -856,6 +856,48 @@ class SolicitudPublicaCreateView(APIView):
             'servicio_id': servicio.id,
         }
 
+    def _crear_servicio(self, data, clave):
+        """Crea el cliente, el servicio, sus componentes y sus fotografías.
+
+        Todo ocurre en una transacción: si el almacenamiento falla, no queda
+        una solicitud a medias ni archivos huérfanos.
+        """
+        with transaction.atomic():
+            cliente, creado = Cliente.objects.get_or_create(
+                email=data['correo_electronico'].strip().lower(),
+                defaults={
+                    'nombre': data['nombre_cliente'].strip(),
+                    'empresa': data.get('empresa', '').strip(),
+                    'telefono': data.get('telefono', '').strip(),
+                    'whatsapp': data.get('whatsapp', '').strip(),
+                },
+            )
+            if not creado and not cliente.whatsapp:
+                cliente.whatsapp = data['whatsapp']
+                cliente.save(update_fields=['whatsapp'])
+            servicio = Servicio.objects.create(
+                cliente=cliente,
+                tipo_servicio=TipoServicio.PRUEBA,
+                descripcion_solicitud=data['descripcion_problema'],
+                entregar_en_banco=data.get('entregar_en_banco', False),
+                avisar_para_coordinar=data.get('avisar_para_coordinar', False),
+                recoger=data.get('recoger', False),
+                idempotency_key=clave,
+            )
+            for comp in data.get('componentes', []):
+                Componente.objects.create(
+                    servicio=servicio,
+                    tipo=comp['tipo'],
+                    marca=comp.get('marca') or '',
+                    referencia=comp.get('referencia') or '',
+                    descripcion=comp.get('descripcion') or '',
+                    cantidad=comp.get('cantidad', 1),
+                )
+            # Las fotografías las guarda un helper separado para poder cambiar
+            # el almacenamiento (Cloudflare) sin tocar la vista (plan D-1/D-9).
+            guardar_fotografias(servicio, data.get('fotografias'))
+            return servicio
+
     def post(self, request):
         serializer = SolicitudPublicaSerializer(data=request.data)
         if not serializer.is_valid():
@@ -894,41 +936,18 @@ class SolicitudPublicaCreateView(APIView):
                     status=status.HTTP_409_CONFLICT,
                 )
 
-        from django.db import transaction
-
-        with transaction.atomic():
-            cliente, creado = Cliente.objects.get_or_create(
-                email=data['correo_electronico'].strip().lower(),
-                defaults={
-                    'nombre': data['nombre_cliente'].strip(),
-                    'empresa': data.get('empresa', '').strip(),
-                    'telefono': data.get('telefono', '').strip(),
-                    'whatsapp': data.get('whatsapp', '').strip(),
+        try:
+            servicio = self._crear_servicio(data, clave)
+        except ErrorDeAlmacenamiento:
+            return Response(
+                {
+                    'detail': (
+                        'No pudimos guardar las fotografías de tu solicitud. '
+                        'Inténtalo de nuevo en unos minutos o escríbenos por '
+                        'WhatsApp para enviar las imágenes.'
+                    ),
                 },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-            if not creado and not cliente.whatsapp:
-                cliente.whatsapp = data['whatsapp']
-                cliente.save(update_fields=['whatsapp'])
-            servicio = Servicio.objects.create(
-                cliente=cliente,
-                tipo_servicio=TipoServicio.PRUEBA,
-                descripcion_solicitud=data['descripcion_problema'],
-                entregar_en_banco=data.get('entregar_en_banco', False),
-                avisar_para_coordinar=data.get('avisar_para_coordinar', False),
-                recoger=data.get('recoger', False),
-                idempotency_key=clave,
-            )
-            for comp in data.get('componentes', []):
-                Componente.objects.create(
-                    servicio=servicio,
-                    tipo=comp['tipo'],
-                    marca=comp.get('marca') or '',
-                    referencia=comp.get('referencia') or '',
-                    descripcion=comp.get('descripcion') or '',
-                    cantidad=comp.get('cantidad', 1),
-                )
-            # Las fotografías las guarda un helper separado para poder cambiar
-            # el almacenamiento (Cloudflare) sin tocar la vista (plan D-1/D-9).
-            guardar_fotografias(servicio, data.get('fotografias'))
 
         return Response(self._respuesta(servicio), status=status.HTTP_201_CREATED)

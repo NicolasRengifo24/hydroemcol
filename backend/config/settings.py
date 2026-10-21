@@ -296,6 +296,19 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        # El handler `console` de Django solo escribe con DEBUG=True, así que en
+        # producción (Render) los fallos de almacenamiento y las excepciones no
+        # controladas deben quedar visibles en el log del servidor.
+        'servicios.almacenamiento': {
+            'handlers': ['consola_seguridad'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['consola_seguridad'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
     },
 }
 

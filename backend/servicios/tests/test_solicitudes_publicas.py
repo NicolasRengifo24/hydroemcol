@@ -1,5 +1,6 @@
 import shutil
 import tempfile
+from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -486,3 +487,26 @@ class FotoSolicitudTest(TestCase):
         self.assertIn("10 MB", str(resp.data))
         self.assertFalse(Servicio.objects.exists())
         self.assertFalse(Fotografia.objects.exists())
+
+    def test_fallo_de_almacenamiento_responde_503_sin_registrar(self):
+        """Si el almacenamiento falla no hay error 500 ni solicitud a medias.
+
+        El fallo del proveedor queda en el log del servidor; al cliente solo
+        llega un mensaje accionable.
+        """
+        with mock.patch(
+            "servicios.almacenamiento.default_storage.save",
+            side_effect=OSError("AccessDenied"),
+        ):
+            resp = self.client.post(
+                "/api/solicitudes/",
+                self._payload_multipart([self._imagen()]),
+                format="multipart",
+            )
+
+        self.assertEqual(resp.status_code, 503, resp.data)
+        self.assertIn("fotografías", resp.data["detail"])
+        self.assertNotIn("AccessDenied", resp.data["detail"])
+        self.assertFalse(Servicio.objects.exists())
+        self.assertFalse(Fotografia.objects.exists())
+        self.assertFalse(Cliente.objects.exists())
