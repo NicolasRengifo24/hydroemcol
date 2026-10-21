@@ -409,19 +409,38 @@ RECHAZADO (Rechazado)
 Servicio en curso: SOLICITADO o EN_CURSO. Servicio cerrado: FINALIZADO o CANCELADO; un servicio
 cerrado no admite cambios de estado.
 
-Reglas de cambio de estado (spec 008):
+Reglas de cambio de estado (spec 008, ajustadas por la spec 011):
 
 - El único rol es el ADMINISTRATIVO: el técnico es el administrativo. Solo él cambia estados.
-- Todo cambio de estado sigue la tabla de transiciones de la spec 008 y se valida en backend; una
-  transición no listada se rechaza sin modificar datos. La interfaz solo presenta las opciones que
-  el backend entrega.
+- Todo cambio de estado sigue la tabla de transiciones (spec 008 §4.1, ajustada por la spec 011) y
+  se valida en backend; una transición no listada se rechaza sin modificar datos. La interfaz solo
+  presenta las opciones que el backend entrega.
+- COTIZANDO no es un destino manual: se conserva en el catálogo por compatibilidad de datos, pero
+  nunca se ofrece. La cotización se crea con la acción "Crear cotización", que mueve el componente a
+  ESPERANDO_APROBACION.
 - El cliente no cambia estados: su única acción es aprobar o rechazar la cotización desde el
   seguimiento con su token. El rechazo de una cotización no cambia el estado del componente: lo
   deja en ESPERANDO_APROBACION.
+- Una cotización bloqueante pendiente detiene el componente: en ESPERANDO_APROBACION el único
+  destino manual es RECHAZADO y el backend rechaza (409) cualquier intento de avanzar. Una
+  cotización no bloqueante pendiente deja avanzar: el selector ofrece el avance normal desde el
+  estado de origen de la espera.
 - RECHAZADO no es un paso del recorrido normal: solo lo alcanza el administrador con una
   finalización manual que registra motivo (texto libre) y fecha.
 - El servicio pasa de SOLICITADO a EN_CURSO cuando el primer componente sale de PENDIENTE, y se
   finaliza o se cancela manualmente (la cancelación exige comentario).
+
+Registro de recepción (spec 010):
+
+- "Registrar recepción" es una acción explícita del ADMINISTRATIVO que marca que los componentes
+  llegaron al almacén. No es automática.
+- Escribe fecha_recepcion, registra el hecho en HistorialServicio (con usuario y fecha) y, si el
+  servicio estaba SOLICITADO, lo pasa a EN_CURSO en la misma operación. Si ya estaba EN_CURSO,
+  conserva el estado.
+- El comentario de recepción es opcional y queda visible al cliente (visible_cliente=True).
+- Se registra una sola vez: un segundo intento responde 409 Conflict. Un servicio FINALIZADO o
+  CANCELADO rechaza la recepción.
+- La acción aparece en acciones_disponibles solo mientras el servicio no tenga fecha_recepcion.
 
 15. APROBACIONES
 
@@ -847,20 +866,26 @@ Línea de tiempo pública, 4 pasos (spec 008, RF-FLU-15):
 ○ Pruebas
 ○ Finalizado
 
-Pasos del flujo de un componente (spec 008, §4.1):
+Pasos del flujo de un componente (spec 008, §4.1, ajustado por la spec 011):
 
-PENDIENTE → EN_REVISION → COTIZANDO → ESPERANDO_APROBACION → OPERARIO_TRABAJANDO → EN_PRUEBAS → LISTO_PARA_ENTREGA
+PENDIENTE → EN_REVISION → OPERARIO_TRABAJANDO → EN_PRUEBAS → LISTO_PARA_ENTREGA
 
 Con estos matices:
 
+- COTIZANDO no es un paso manual: se conserva en el catálogo por compatibilidad, pero el
+  administrativo no lo elige. La cotización es una acción aparte ("Crear cotización").
 - RECHAZADO no es un paso del recorrido normal: solo lo registra el administrador al finalizar el
   componente, con motivo y fecha.
-- Registrar una cotización mientras el componente está en COTIZANDO, OPERARIO_TRABAJANDO,
-  EN_PRUEBAS o LISTO_PARA_ENTREGA lo lleva a ESPERANDO_APROBACION conservando su fase y su
-  progreso; al aprobarla continúa el trabajo, salvo cuando la espera vino de LISTO_PARA_ENTREGA,
-  en cuyo caso vuelve a EN_PRUEBAS.
+- Crear una cotización mientras el componente está en EN_REVISION, OPERARIO_TRABAJANDO o EN_PRUEBAS
+  lo lleva a ESPERANDO_APROBACION conservando su fase y su progreso. Si la cotización es bloqueante,
+  el componente queda detenido hasta la respuesta del cliente; si no es bloqueante, el
+  administrativo puede seguir avanzando desde el origen de la espera. Al aprobarla vuelve al estado
+  de origen (EN_PRUEBAS vuelve a EN_PRUEBAS; EN_REVISION a EN_REVISION); una espera que vino de
+  LISTO_PARA_ENTREGA vuelve a EN_PRUEBAS.
 - El servicio pasa de SOLICITADO a EN_CURSO con el primer componente que sale de PENDIENTE y
   termina en FINALIZADO (cierre manual) o CANCELADO.
+- La recepción (spec 010) se muestra con su fecha cuando exista; el comentario de recepción
+  aparece entre las actualizaciones visibles al cliente.
 
 Si hay cotización pendiente:
 
@@ -1197,7 +1222,8 @@ Campos definitivos para información técnica.
 Límites de fotografías.
 Configuración exacta de Cloudflare.
 Estrategia concreta de autenticación de API.
-Formato definitivo de mensajes de WhatsApp.
+El formato definitivo de mensajes de WhatsApp y sus textos aprobados se encuentra en
+`specs/012-notificaciones-whatsapp/spec.md` §4.1, que es la fuente de referencia.
 Qué información técnica se muestra al cliente.
 Política de edición de cotizaciones.
 Política de eliminación de servicios.

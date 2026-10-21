@@ -82,7 +82,8 @@ abierto es dónde guarda el frontend ese token.
 ### Configuración y operación — sin definir
 
 - Cloudflare: bucket, nombres, estructura de URLs, credenciales (§17, §43).
-- Formato definitivo de los mensajes de WhatsApp (§43).
+- Formato de los mensajes de WhatsApp: definido en `specs/012-notificaciones-whatsapp/spec.md`
+  §4.1, fuente de referencia para los textos aprobados.
 - Qué información técnica ve el cliente en el seguimiento (§43). Principio ya fijado en
   `specs/001`: la visibilidad se decide dato por dato, nunca por omisión.
 - Diseño visual definitivo (§43). Base actual: variables CSS en
@@ -584,3 +585,85 @@ Channels sigue en esa lista, y por eso el "tiempo real" se pospuso a una decisi�
 - T9 permanece pendiente de la verificación MCP: login administrativo, AdminServicios y
   AdminServicioDetalle, seguimiento público con token, feedback/409, consola y responsive a
   375/768/1280. No se modificó código durante esta tarea.
+
+### 2026-10-19 — Spec 008, T12: correcciones tras QA
+
+- Las respuestas repetidas de cotizaciones ya respondidas devuelven `409` sin excepción por
+  resultado coincidente, tanto en la acción administrativa/externa como en el endpoint público.
+- El endpoint público recibe `cotizacion_id` y solo responde esa cotización del servicio; la
+  respuesta pública incluye el identificador necesario para aprobar o rechazar la cotización
+  concreta.
+- El seguimiento público expone `paso_publico` según la tabla §4.3 y muestra los cuatro pasos
+  `Recibido`, `Revisión y cotización`, `Pruebas` y `Finalizado` por componente.
+- `Componente.motivo_finalizacion` pasó a `TextField`; se creó y aplicó la migración
+  `servicios.0009_alter_componente_motivo_finalizacion`.
+- Verificación automatizada: 96 tests Django, `makemigrations --check`, `check`, build y lint
+  frontend, y `node --test` pasan. Chrome DevTools MCP estuvo disponible en el reintento: se
+  verificó un enlace público real con los cuatro pasos, sin overflow horizontal en el viewport
+  reportado por el MCP (500 px efectivos) y sin errores de consola. No se verificaron login
+  administrativo ni los flujos completos de T9; T9 permanece sin marcar.
+
+### 2026-10-20 - Seguimiento público de servicios cancelados y fase interna
+
+- Decisión: el seguimiento público muestra los servicios CANCELADOS (activos) con el aviso
+  de cancelación, en lugar de responder 404. Contrato nuevo: `cancelado` en
+  `ServicioPublicoSerializer`; las cotizaciones pendientes de un servicio cancelado no se
+  listan. Esto contradice RF-EST-13 de la spec 008, que queda pendiente de actualizar.
+- Decisión: el cliente no ve `fase` del componente; el estado real basta. El admin conserva
+  la fase. Se retiró `fase` de `ComponentePublicoSerializer`.
+- Decisión: los indicadores cuentan los servicios CANCELADOS activos en su contador y en
+  `total_activos`; no cuentan en pendientes ni en recientes.
+- Decisión: "Reenviar como nueva versión" solo aparece en una cotización rechazada sin
+  sucesora. Las acciones por cotización las decide el backend (`acciones_disponibles`).
+- Verificación: 99 tests Django OK, build y lint frontend OK; MCP: seguimiento cancelado,
+  seguimiento finalizado sin fase, indicadores con Cancelados 1 y Total activos 10.
+- Decisión: el listado administrativo de servicios incluye los CANCELADOS activos (antes se
+  excluían). El filtro de estado permite aislarlos. Tampoco esto está reflejado aún en RF-EST-13.
+
+### 2026-10-20 — Registro de recepción (spec 010)
+
+- Acción nueva "Registrar recepción" (ADMINISTRATIVO), a nivel de servicio: marca que los
+  componentes llegaron al almacén, escribe `fecha_recepcion` (campo que existía en el modelo pero
+  ninguna acción llenaba) y registra el hecho en `HistorialServicio`.
+- Si el servicio estaba `SOLICITADO` pasa a `EN_CURSO` en la misma operación; si ya estaba
+  `EN_CURSO`, conserva el estado. El comentario es opcional y queda `visible_cliente=True`.
+- Se registra una sola vez (`409` en el segundo intento) y los estados cerrados la rechazan.
+  `acciones_disponibles` incluye `registrar_recepcion` solo mientras `fecha_recepcion` sea `None`.
+- Backend: `registrar_recepcion()` en `servicios/acciones.py`; `RegistrarRecepcionInputSerializer`;
+  `RegistrarRecepcionView` y ruta `servicios/<id>/recepcion/` (`name='servicio-recepcion'`).
+- Frontend: `registrarRecepcion` en `services/api.ts`; mutación en `hooks/useAdministrativo.ts`;
+  panel "Recepción" (comentario opcional + botón) y fila "Recepción" en `AdminServicioDetalle.tsx`.
+- Documentación: spec `specs/010-registro-recepcion/spec.md`; `CONTEXTO_MAESTRO.md` §14 y §30.
+- Verificación: 91 tests Django OK y `tsc` sin errores. MCP (admin/admin123): registrar recepción
+  desde el panel pasó el servicio a "En curso", escribió la fila "Recepción" con fecha y dejó el
+  comentario en el historial; el seguimiento público mostró estado "En curso", la fecha de recepción
+  y el comentario en "Actualizaciones visibles"; el circuito pintó el paso "Revisión y cotización"
+  con el comentario del admin al hacer clic y no hubo overflow horizontal a 390 px.
+- Nota de entorno: había 4 procesos `runserver` sirviendo código viejo en el puerto 8000; se
+  detuvieron y se levantó uno limpio con `.venv` (el `python.exe` global no tiene las dependencias).
+
+### 2026-10-20 — Coherencia del flujo y cotización por acción (spec 011)
+
+- `COTIZANDO` deja de ser destino manual: se conserva en el catálogo por compatibilidad, pero
+  nunca se ofrece. La cotización es la acción "Crear cotización", que mueve el componente a
+  `ESPERANDO_APROBACION`.
+- Selector manual: `EN_REVISION → OPERARIO_TRABAJANDO` (única salida); `EN_REVISION` ya no ofrece
+  `COTIZANDO`. `EN_REVISION → OPERARIO_TRABAJANDO` marca `trabajo_iniciado`, fase
+  `DESMONTAJE_INICIADO` y `fecha_inicio_trabajo`.
+- Cotización: se crea desde `EN_REVISION`/`OPERARIO_TRABAJANDO`/`EN_PRUEBAS`; desde `PENDIENTE` o
+  `LISTO_PARA_ENTREGA` responde `409`. Al aprobarla, el componente vuelve a su estado de origen.
+- Bloques: una cotización bloqueante pendiente **detiene** (en `ESPERANDO_APROBACION` el único
+  destino manual es `RECHAZADO`; avanzar responde `409` con aviso). Una cotización no bloqueante
+  **deja avanzar**: el selector ofrece el avance normal desde el origen de la espera.
+- Backend: `reglas.py` (`TRANSICIONES_MANUALES_COMPONENTE`, `ORIGENES_COTIZACION`,
+  `AVANCE_DESDE_ORIGEN`, `tiene_bloqueo_cotizacion`, `transicion_por_cotizacion`,
+  `transicion_por_respuesta`, `resolver_transicion_componente`); `serializers.construir_hoy`
+  expone `origen_espera` por componente; `acciones.cambiar_estado_componente` y `crear_cotizacion`.
+- Frontend: `CotizacionForm` solo ofrece componentes cotizables (`EN_REVISION`,
+  `OPERARIO_TRABAJANDO`, `EN_PRUEBAS`) con aviso cuando no hay ninguno.
+- Documentación: spec `specs/011-coherencia-flujo-cotizacion/spec.md` (supera parcialmente la 008
+  §4.1); `CONTEXTO_MAESTRO.md` §14 y §30.
+- Verificación: 98 tests Django OK y `tsc` limpio. MCP (admin/admin123): en `EN_REVISION` el
+  selector ofrece solo "Operario trabajando"; cotización no bloqueante dejó el selector con
+  "Rechazado" + avance y la tarjeta marcada "No bloqueante"; cotización bloqueante dejó el selector
+  solo con "Rechazado" y bloqueó el avance.

@@ -55,5 +55,18 @@
 
 - [ ] **T10. Mejoras de precisión del reviewer (no bloqueantes).** Complemento de RF-FLU-02, 06, 07, 08, 14
   - Sin editar la spec aprobada: (1) trazabilidad RF→test explícita en los RF críticos (RF-FLU-06, 08, 09, 14) mediante comentarios de sección en `test_flujo_estados.py` que enlisten qué test cubre cada RF y CL; (2) glosario breve en el docstring de `reglas.py` que fije el sentido de "token" (credencial de seguimiento) y de "rechazo no bloqueante" (el rechazo del cliente no mueve el componente); (3) refuerzo de campos obligatorios: pruebas de borde para motivo vacío o solo espacios en finalizaciones, correcciones y cancelación (`400`), y comentario de la finalización del servicio registrado en el historial.
-  - Hecho cuando: `manage.py test servicios.tests.test_flujo_estados` sigue en verde con las pruebas de borde añadidas, y los docstrings/glosario quedan escritos en español.
-  - Requiere: T9
+   - Hecho cuando: `manage.py test servicios.tests.test_flujo_estados` sigue en verde con las pruebas de borde añadidas, y los docstrings/glosario quedan escritos en español.
+   - Requiere: T9
+
+- [x] **T11. Corrección de regresión de UI y reenvío de cotizaciones.** RF-COT-03/05, RF-ADM-22..26, RF-SEG-12..14, RF-FLU-05/06/14/15
+   - Restaurar el formulario de cotización por líneas, las acciones de cotización y componentes, las observaciones internas solo en desarrollo, el enlace privado de seguimiento y la creación de detalles al reenviar una cotización rechazada. Verificado con la suite backend, build/lint frontend y `node --test`.
+   - Requiere: T7, T8
+
+- [x] **T12. Correcciones tras QA de respuestas, seguimiento y motivos.** RF-FLU-06, 07, 08, 13, 15
+   - Respuesta repetida de una cotización ya respondida devuelve `409` también cuando el resultado coincide; el seguimiento público recibe `cotizacion_id` y responde la cotización concreta; la línea de tiempo pública de cuatro pasos usa el mapeo §4.3 servido por backend; `motivo_finalizacion` admite texto libre mediante `TextField` y migración 0009.
+   - Hecho cuando: las pruebas nuevas de aprobación externa/pública, asociación de cotización y motivo largo pasan, todos los checks del proyecto pasan y T9 no se marca sin evidencia MCP completa.
+   - Requiere: T11
+
+- [x] **T13. QA: respuesta repetida con resultado contrario.** RF-FLU-06, RF-FLU-13
+   - Añadir prueba Django HTTP que registra una primera respuesta y rechaza con `409` una segunda respuesta con el resultado contrario, sin crear otra aprobación ni modificar el estado registrado.
+   - Requiere: T12
