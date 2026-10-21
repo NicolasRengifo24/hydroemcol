@@ -15,6 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
+from corsheaders.defaults import default_headers
 from dotenv import load_dotenv
 from django.core.exceptions import ImproperlyConfigured
 
@@ -247,6 +248,7 @@ CORS_ALLOWED_ORIGINS = _rechazar_wildcard(
     ),
 )
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = (*default_headers, 'idempotency-key')
 CSRF_TRUSTED_ORIGINS = _rechazar_wildcard(
     'CSRF_TRUSTED_ORIGINS',
     _variable_lista(
