@@ -59,3 +59,41 @@ ESTADOS_FINALIZACION = (
     EstadoComponente.LISTO_PARA_ENTREGA,
     EstadoComponente.RECHAZADO,
 )
+
+
+PASOS_PUBLICOS_COMPONENTE = {
+    EstadoComponente.PENDIENTE: 'Recibido',
+    EstadoComponente.EN_REVISION: 'Revisión y cotización',
+    EstadoComponente.COTIZANDO: 'Revisión y cotización',
+    EstadoComponente.ESPERANDO_APROBACION: 'Revisión y cotización',
+    EstadoComponente.OPERARIO_TRABAJANDO: 'Revisión y cotización',
+    EstadoComponente.EN_PRUEBAS: 'Pruebas',
+    EstadoComponente.LISTO_PARA_ENTREGA: 'Finalizado',
+    EstadoComponente.RECHAZADO: 'Finalizado',
+}
+
+
+# Estados de catálogos anteriores que pueden aparecer en el historial de
+# componentes (la migración 0008 remapeó el estado vigente, no las filas de
+# historial ya escritas). Se traducen a su equivalente del catálogo actual para
+# que el seguimiento público muestre el paso correcto.
+ESTADOS_COMPONENTE_HISTORICOS = {
+    'EN_PROCESO': EstadoComponente.OPERARIO_TRABAJANDO,
+    'RECHAZADO_BLOQUEANTE': EstadoComponente.RECHAZADO,
+    'APROBADO': EstadoComponente.OPERARIO_TRABAJANDO,
+    'FINALIZADO_POR_CLIENTE': EstadoComponente.LISTO_PARA_ENTREGA,
+    'FINALIZADO_POR_TECNICO': EstadoComponente.LISTO_PARA_ENTREGA,
+}
+
+
+def paso_publico_componente(estado):
+    """Devuelve el paso público definido en la tabla §4.3 de la spec 008.
+
+    Tolera estados fuera del catálogo vigente: el historial de componentes
+    conserva valores de catálogos anteriores (p. ej. ``EN_PROCESO`` o
+    ``FINALIZADO_POR_TECNICO``). Un estado histórico se traduce a su
+    equivalente; un estado totalmente desconocido no debe tumbar el
+    seguimiento público y cae en "Revisión y cotización".
+    """
+    estado = ESTADOS_COMPONENTE_HISTORICOS.get(estado, estado)
+    return PASOS_PUBLICOS_COMPONENTE.get(estado, 'Revisión y cotización')

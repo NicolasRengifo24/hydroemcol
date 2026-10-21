@@ -217,6 +217,8 @@ CSRF_TRUSTED_ORIGINS = _rechazar_wildcard(
     ),
 )
 
+SEGUIMIENTO_BASE_URL = os.getenv('SEGUIMIENTO_BASE_URL', '')
+
 
 # HTTPS/proxy y cookies seguras son configurables por entorno. En producción
 # se fuerzan los valores seguros aunque falte una variable explícita.

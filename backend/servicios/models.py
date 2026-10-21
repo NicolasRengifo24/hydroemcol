@@ -244,8 +244,7 @@ class Componente(models.Model):
     )
     # Motivo de cierre del componente (RF-FLU-07/08): texto libre escrito por
     # el administrativo. Sin catálogo propio (DA-6 cerrada en la spec 008).
-    motivo_finalizacion = models.CharField(
-        max_length=30,
+    motivo_finalizacion = models.TextField(
         blank=True, verbose_name='Motivo de finalización',
     )
 

@@ -14,10 +14,12 @@ ESTADOS_SERVICIO_NORMALES = (EstadoServicio.SOLICITADO, EstadoServicio.EN_CURSO)
 ESTADOS_SERVICIO_CERRADOS = (EstadoServicio.FINALIZADO, EstadoServicio.CANCELADO)
 ESTADOS_SELECCIONABLES_COMPONENTE = tuple(EstadoComponente.values)
 
-# Tabla §4.1: solo destinos decididos manualmente por el administrativo.
+# Tabla §4.1 (spec 011): solo destinos decididos manualmente por el
+# administrativo. `COTIZANDO` no es un destino manual: la cotización se crea con
+# la acción "Crear cotización", que mueve a `ESPERANDO_APROBACION`.
 TRANSICIONES_MANUALES_COMPONENTE = {
     EstadoComponente.PENDIENTE: [EstadoComponente.EN_REVISION],
-    EstadoComponente.EN_REVISION: [EstadoComponente.COTIZANDO],
+    EstadoComponente.EN_REVISION: [EstadoComponente.OPERARIO_TRABAJANDO],
     EstadoComponente.COTIZANDO: [],
     EstadoComponente.ESPERANDO_APROBACION: [EstadoComponente.RECHAZADO],
     EstadoComponente.OPERARIO_TRABAJANDO: [EstadoComponente.EN_PRUEBAS],
@@ -25,6 +27,15 @@ TRANSICIONES_MANUALES_COMPONENTE = {
     EstadoComponente.LISTO_PARA_ENTREGA: [EstadoComponente.EN_PRUEBAS],
     EstadoComponente.RECHAZADO: [EstadoComponente.ESPERANDO_APROBACION],
 }
+
+# Estados desde los que se puede crear una cotización (RF-COH-04). `PENDIENTE`
+# queda fuera (el repuesto aún no está disponible) y `LISTO_PARA_ENTREGA`
+# también (el componente ya está cerrado).
+ORIGENES_COTIZACION = (
+    EstadoComponente.EN_REVISION,
+    EstadoComponente.OPERARIO_TRABAJANDO,
+    EstadoComponente.EN_PRUEBAS,
+)
 
 
 def _cotizaciones_de(hoy, componente):
@@ -41,9 +52,28 @@ def requiere_motivo(destino):
     return destino in ESTADOS_FINALIZACION
 
 
+# Destinos normales de avance por estado de origen de la espera (RF-COH-05):
+# una cotización no bloqueante deja avanzar desde `ESPERANDO_APROBACION`.
+AVANCE_DESDE_ORIGEN = {
+    EstadoComponente.EN_REVISION: EstadoComponente.OPERARIO_TRABAJANDO,
+    EstadoComponente.OPERARIO_TRABAJANDO: EstadoComponente.EN_PRUEBAS,
+    EstadoComponente.EN_PRUEBAS: EstadoComponente.LISTO_PARA_ENTREGA,
+}
+
+
 def estados_componente_seleccionables(hoy, componente):
-    """Destinos manuales válidos; los automáticos nunca aparecen aquí."""
-    return list(TRANSICIONES_MANUALES_COMPONENTE.get(componente.get('estado'), []))
+    """Destinos manuales válidos; los automáticos nunca aparecen aquí.
+
+    En `ESPERANDO_APROBACION` con una cotización no bloqueante pendiente se
+    ofrece además el avance normal desde el origen de la espera (RF-COH-05).
+    """
+    base = list(TRANSICIONES_MANUALES_COMPONENTE.get(componente.get('estado'), []))
+    if (componente.get('estado') == EstadoComponente.ESPERANDO_APROBACION
+            and not tiene_bloqueo_cotizacion(hoy, componente)):
+        avance = AVANCE_DESDE_ORIGEN.get(componente.get('origen_espera'))
+        if avance and avance not in base:
+            base.append(avance)
+    return base
 
 
 def _decision(**cambios):
@@ -63,6 +93,9 @@ def resolver_transicion_componente(hoy, componente, destino, comentario=''):
         return _decision(codigo=400, motivo='Ese estado no puede asignarse manualmente.')
     if destino == componente.get('estado'):
         return _decision(permitido=True, tipo='noop', codigo=200)
+    if tiene_bloqueo_cotizacion(hoy, componente):
+        return _decision(codigo=409, motivo='Una cotización bloqueante pendiente impide mover '
+                                            'este componente hasta que el cliente responda.')
     destinos = estados_componente_seleccionables(hoy, componente)
     if destino not in destinos:
         return _decision(codigo=409, motivo='La transición no está permitida.')
@@ -88,21 +121,30 @@ def es_cambio_fuera_de_pendiente(componente_anterior, componente_hoy):
 
 
 def transicion_por_respuesta(hoy, componente, resultado, origen_espera):
-    """Aprobación automática; rechazo deja el componente donde estaba."""
+    """Aprobación automática; rechazo deja el componente donde estaba.
+
+    Devuelve el estado de origen de la espera para conservar el progreso
+    (RF-COH-06): aprobar una cotización creada en `EN_REVISION` vuelve a
+    `EN_REVISION`, una creada en `EN_PRUEBAS` vuelve a `EN_PRUEBAS`.
+    """
     if componente.get('estado') != EstadoComponente.ESPERANDO_APROBACION:
         return None
     if resultado != 'APROBADA':
         return None
     if origen_espera == EstadoComponente.LISTO_PARA_ENTREGA:
         return EstadoComponente.EN_PRUEBAS
+    if origen_espera in ORIGENES_COTIZACION:
+        return origen_espera
     return EstadoComponente.OPERARIO_TRABAJANDO
 
 
 def transicion_por_cotizacion(hoy, componente):
-    if componente.get('estado') in (
-        EstadoComponente.COTIZANDO, EstadoComponente.OPERARIO_TRABAJANDO,
-        EstadoComponente.EN_PRUEBAS, EstadoComponente.LISTO_PARA_ENTREGA,
-    ):
+    """Estado de espera al crear una cotización (RF-COH-04).
+
+    Solo desde los orígenes de trabajo; `PENDIENTE` y `LISTO_PARA_ENTREGA`
+    no admiten cotización nueva.
+    """
+    if componente.get('estado') in ORIGENES_COTIZACION:
         return EstadoComponente.ESPERANDO_APROBACION
     return None
 
@@ -142,10 +184,10 @@ def estados_cerrados():
     return ESTADOS_SERVICIO_CERRADOS
 
 
-# Compatibilidad temporal para imports de acciones.py/serializers.py (T4 los
-# retirará). No son usadas por las reglas nuevas.
+# RF-COH-03/05: una cotización bloqueante *pendiente* detiene el avance; una no
+# bloqueante o ya respondida (aprobada/rechazada) no lo impide.
 def tiene_bloqueo_cotizacion(hoy, componente):
-    return any(c.get('es_bloqueante') and c.get('estado') in ('PENDIENTE', 'RECHAZADA')
+    return any(c.get('es_bloqueante') and c.get('estado') == 'PENDIENTE'
                for c in _cotizaciones_de(hoy, componente))
 
 

@@ -23,6 +23,7 @@ class SolicitudesPublicasTest(TestCase):
             "nombre_cliente": "Ana Pérez",
             "correo_electronico": "ana@example.com",
             "telefono": "3001234567",
+            "whatsapp": "3001234567",
             "tipo_servicio": "PRUEBA",
             "descripcion_problema": "Problema de prueba",
             "componentes": [{"tipo": "BOMBA", "cantidad": 1}],
@@ -38,6 +39,7 @@ class SolicitudesPublicasTest(TestCase):
             "nombre_cliente": "Ana",
             "correo_electronico": "ana@example.com",
             "telefono": "3001234567",
+            "whatsapp": "3001234567",
             "tipo_servicio": "PRUEBA",
             "descripcion_problema": "Problema",
             "componentes": [],
@@ -50,6 +52,7 @@ class SolicitudesPublicasTest(TestCase):
             "nombre_cliente": "Ana",
             "correo_electronico": "ana@example.com",
             "telefono": "3001234567",
+            "whatsapp": "3001234567",
             "tipo_servicio": "PRUEBA",
             "descripcion_problema": "Problema",
             "componentes": [{"tipo": "BOMBA", "cantidad": 0}],
@@ -62,6 +65,7 @@ class SolicitudesPublicasTest(TestCase):
             "nombre_cliente": "Ana",
             "correo_electronico": " Ana@Empresa.COM ",
             "telefono": "3001234567",
+            "whatsapp": "3001234567",
             "tipo_servicio": "PRUEBA",
             "descripcion_problema": "Problema",
             "componentes": [{"tipo": "BOMBA", "cantidad": 1}],
@@ -75,6 +79,7 @@ class SolicitudesPublicasTest(TestCase):
             "nombre_cliente": "Ana",
             "correo_electronico": "ana2@example.com",
             "telefono": "+57 300-123-4567",
+            "whatsapp": "3001234567",
             "tipo_servicio": "PRUEBA",
             "descripcion_problema": "Problema",
             "componentes": [{"tipo": "BOMBA", "cantidad": 1}],
@@ -106,7 +111,7 @@ class SolicitudesPublicasTest(TestCase):
         }
         resp = self.client.post("/api/solicitudes/", payload, format="json")
         self.assertEqual(resp.status_code, 400)
-        self.assertIn("telefono", resp.data)
+        self.assertIn("whatsapp", resp.data)
 
     def test_empresa_opcional_se_guarda(self):
         payload = {
@@ -114,6 +119,7 @@ class SolicitudesPublicasTest(TestCase):
             "empresa": "Servicios del Caribe S.A.S",
             "correo_electronico": "ana5@example.com",
             "telefono": "3001234567",
+            "whatsapp": "3001234567",
             "tipo_servicio": "PRUEBA",
             "descripcion_problema": "Problema",
             "componentes": [{"tipo": "BOMBA", "cantidad": 1}],
@@ -127,6 +133,7 @@ class SolicitudesPublicasTest(TestCase):
             "nombre_cliente": "Ana",
             "correo_electronico": f"ana{overrides.pop('_n', '')}@example.com",
             "telefono": "3001234567",
+            "whatsapp": "3001234567",
             "tipo_servicio": "PRUEBA",
             "descripcion_problema": "Problema",
             "componentes": [{"tipo": "BOMBA", "cantidad": 1}],
@@ -282,12 +289,12 @@ class SolicitudesPublicasTest(TestCase):
     def test_idempotencia_keys_distintas_crean_dos(self):
         primero = self.client.post(
             "/api/solicitudes/",
-            self._payload(_n="idem3a", telefono="3000000001", idempotency_key="k-1"),
+            self._payload(_n="idem3a", telefono="3000000001", whatsapp="3000000001", idempotency_key="k-1"),
             format="json",
         )
         segundo = self.client.post(
             "/api/solicitudes/",
-            self._payload(_n="idem3b", telefono="3000000002", idempotency_key="k-2"),
+            self._payload(_n="idem3b", telefono="3000000002", whatsapp="3000000002", idempotency_key="k-2"),
             format="json",
         )
         self.assertEqual(primero.status_code, 201)
@@ -320,6 +327,7 @@ class FotoSolicitudTest(TestCase):
             "nombre_cliente": "Ana",
             "correo_electronico": "foto@example.com",
             "telefono": "3001234567",
+            "whatsapp": "3001234567",
             "descripcion_problema": "Problema",
             "componentes": [{"tipo": "BOMBA", "cantidad": 1}],
         }
@@ -339,6 +347,7 @@ class FotoSolicitudTest(TestCase):
             "nombre_cliente": "Ana",
             "correo_electronico": "foto@example.com",
             "telefono": "3001234567",
+            "whatsapp": "3001234567",
             "descripcion_problema": "Problema",
             "componentes[0]tipo": "BOMBA",
             "componentes[0]cantidad": "1",

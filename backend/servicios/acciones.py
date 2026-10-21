@@ -87,10 +87,7 @@ def registrar_respuesta(*, servicio, componente_id, cotizacion_id, resultado, ca
         if cotizacion is None:
             raise ErrorDeAccion('La cotización no pertenece a ese componente.', 404)
         if cotizacion.estado != EstadoCotizacion.PENDIENTE:
-            aprobacion = cotizacion.aprobaciones.order_by('fecha_registro').first()
-            if aprobacion and aprobacion.resultado == resultado:
-                return aprobacion
-            raise ErrorDeAccion('La cotización ya tiene una respuesta contradictoria.', 409)
+            raise ErrorDeAccion('La cotización ya tiene una respuesta registrada.', 409)
         aprobacion = AprobacionServicio.objects.create(cotizacion=cotizacion, resultado=resultado,
             medio=canal, usuario_registro=usuario, fecha=timezone.now(), observacion=observacion, ip=ip)
         cotizacion.estado, cotizacion.canal = resultado, canal
@@ -124,6 +121,8 @@ def cambiar_estado_componente(*, servicio, componente_id, nuevo_estado, comentar
             componente.motivo_finalizacion = ''
             componente.fecha_finalizacion = None
             campos = ['estado', 'motivo_finalizacion', 'fecha_finalizacion']
+        elif nuevo_estado == EstadoComponente.OPERARIO_TRABAJANDO:
+            campos = _aplicar_inicio_trabajo(componente)
         else:
             componente.estado = nuevo_estado
             campos = ['estado']
@@ -137,6 +136,30 @@ def cambiar_estado_componente(*, servicio, componente_id, nuevo_estado, comentar
             servicio.save(update_fields=['estado'])
             _historial_accion(servicio, 'El primer componente salió de pendiente.', usuario)
         return componente
+
+
+def registrar_recepcion(*, servicio, comentario='', usuario=None):
+    """Marca que los componentes llegaron al almacén (recepción del servicio).
+
+    Registra `fecha_recepcion` una sola vez. Si el servicio sigue en
+    `SOLICITADO`, la recepción es el primer avance real y lo pasa a `EN_CURSO`.
+    Crea una entrada de historial visible al cliente con el comentario opcional.
+    """
+    with transaction.atomic():
+        servicio = _servicio_bloqueado(servicio.pk)
+        if servicio.estado in ESTADOS_SERVICIO_CERRADOS:
+            raise ErrorDeAccion('El servicio está cerrado y no admite cambios.', 409)
+        if servicio.fecha_recepcion is not None:
+            raise ErrorDeAccion('La recepción de este servicio ya fue registrada.', 409)
+        servicio.fecha_recepcion = timezone.now()
+        campos = ['fecha_recepcion']
+        if servicio.estado == EstadoServicio.SOLICITADO:
+            servicio.estado = EstadoServicio.EN_CURSO
+            campos.append('estado')
+        servicio.save(update_fields=campos)
+        HistorialServicio.objects.create(servicio=servicio, estado=servicio.estado,
+            comentario=comentario, usuario=usuario, visible_cliente=True)
+        return servicio
 
 
 def finalizar_servicio(*, servicio, comentario='', usuario=None):
@@ -193,6 +216,12 @@ def crear_cotizacion(*, datos, usuario):
         componente = _componente_bloqueado(servicio, componente.pk)
         if servicio.estado in ESTADOS_SERVICIO_CERRADOS:
             raise ErrorDeAccion('El servicio está cerrado y no admite cotizaciones.', 409)
+        destino = transicion_por_cotizacion(construir_hoy(servicio),
+                                            {'id': componente.pk, 'estado': componente.estado})
+        if destino is None:
+            raise ErrorDeAccion(
+                'No se puede cotizar un componente en estado '
+                f'{componente.get_estado_display()}.', 409)
         datos.update(servicio=servicio, componente=componente, creada_por=usuario,
                      estado=EstadoCotizacion.PENDIENTE)
         cotizacion = Cotizacion.objects.create(**datos)
@@ -200,14 +229,11 @@ def crear_cotizacion(*, datos, usuario):
             cotizacion.detalles.create(**detalle)
         cotizacion.total = sum(d['valor'] * d['cantidad'] for d in detalles)
         cotizacion.save(update_fields=['total'])
-        destino = transicion_por_cotizacion(construir_hoy(servicio),
-                                            {'id': componente.pk, 'estado': componente.estado})
-        if destino:
-            anterior = componente.estado
-            componente.estado = destino
-            componente.save(update_fields=['estado'])
-            HistorialComponente.objects.create(componente=componente, estado_anterior=anterior,
-                estado_nuevo=destino, comentario=f'Cotización {cotizacion.numero} registrada.', usuario=usuario)
+        anterior = componente.estado
+        componente.estado = destino
+        componente.save(update_fields=['estado'])
+        HistorialComponente.objects.create(componente=componente, estado_anterior=anterior,
+            estado_nuevo=destino, comentario=f'Cotización {cotizacion.numero} registrada.', usuario=usuario)
         _historial_accion(servicio, f'Cotización {cotizacion.numero} creada.', usuario)
         return cotizacion
 
@@ -218,10 +244,7 @@ def registrar_aprobacion_externa(*, cotizacion_id, resultado, medio, usuario, ob
         servicio = _servicio_bloqueado(cotizacion.servicio_id)
         componente = _componente_bloqueado(servicio, cotizacion.componente_id) if cotizacion.componente_id else None
         if cotizacion.estado != EstadoCotizacion.PENDIENTE:
-            aprobacion = cotizacion.aprobaciones.order_by('fecha_registro').first()
-            if aprobacion and aprobacion.resultado == resultado:
-                return aprobacion
-            raise ErrorDeAccion('La cotización ya tiene una respuesta contradictoria.', 409)
+            raise ErrorDeAccion('La cotización ya tiene una respuesta registrada.', 409)
         aprobacion = AprobacionServicio.objects.create(cotizacion=cotizacion, resultado=resultado,
             medio=medio, fecha=fecha or timezone.now(), usuario_registro=usuario,
             observacion=observacion, ip=ip)
@@ -266,9 +289,16 @@ def editar_cotizacion(*, cotizacion_id, datos, usuario):
         servicio = _servicio_bloqueado(cotizacion.servicio_id)
         if cotizacion.estado != EstadoCotizacion.PENDIENTE:
             raise ErrorDeAccion('Solo se pueden editar cotizaciones pendientes.', 409)
+        detalles = datos.pop('detalles', None)
         for campo, valor in datos.items():
-            if campo != 'detalles':
-                setattr(cotizacion, campo, valor)
+            setattr(cotizacion, campo, valor)
+        if detalles is not None:
+            cotizacion.detalles.all().delete()
+            for detalle in detalles:
+                cotizacion.detalles.create(**detalle)
+            cotizacion.total = sum(
+                detalle['valor'] * detalle['cantidad'] for detalle in detalles
+            )
         cotizacion.save()
         _historial_accion(servicio, f'Cotización {cotizacion.numero} editada.', usuario)
         return cotizacion
@@ -281,10 +311,21 @@ def reenviar_cotizacion(*, cotizacion_id, datos, usuario):
         componente = _componente_bloqueado(servicio, anterior.componente_id) if anterior.componente_id else None
         if anterior.estado != EstadoCotizacion.RECHAZADA:
             raise ErrorDeAccion('Solo se pueden reenviar cotizaciones rechazadas.', 409)
+        detalles = datos.get('detalles')
+        if detalles is None:
+            detalles = list(anterior.detalles.values('descripcion', 'valor', 'cantidad'))
         nueva = Cotizacion.objects.create(servicio=servicio, componente=componente, tipo=anterior.tipo,
             es_bloqueante=anterior.es_bloqueante, descripcion=datos.get('descripcion', anterior.descripcion),
             observaciones=datos.get('observaciones', anterior.observaciones), creada_por=usuario,
             estado=EstadoCotizacion.PENDIENTE, reemplaza_a=anterior)
+        for detalle in detalles:
+            nueva.detalles.create(
+                descripcion=detalle['descripcion'],
+                valor=detalle['valor'],
+                cantidad=detalle['cantidad'],
+            )
+        nueva.total = sum(detalle['valor'] * detalle['cantidad'] for detalle in detalles)
+        nueva.save(update_fields=['total'])
         _historial_accion(servicio, f'Cotización {anterior.numero} reenviada como {nueva.numero}.', usuario)
         return nueva
 

@@ -19,8 +19,10 @@ from .views import (
     SeguimientoAprobarView,
     SeguimientoView,
     ServicioViewSet,
+    ServicioWhatsAppView,
     SolicitudPublicaCreateView,
     RegistroTecnicoView,
+    RegistrarRecepcionView,
 )
 
 router = DefaultRouter()
@@ -39,7 +41,9 @@ urlpatterns = [
     path('cotizaciones/<int:cotizacion_pk>/aprobaciones/', AprobacionListCreateView.as_view(), name='cotizacion-aprobaciones'),
     path('servicios/<int:servicio_pk>/componentes/<int:componente_pk>/respuesta/', RespuestaCotizacionView.as_view(), name='componente-respuesta'),
     path('servicios/<int:servicio_pk>/componentes/<int:componente_pk>/estado/', CambiarEstadoComponenteView.as_view(), name='componente-cambiar-estado'),
+    path('servicios/<int:servicio_pk>/whatsapp/', ServicioWhatsAppView.as_view(), name='servicio-whatsapp'),
     path('servicios/<int:servicio_pk>/finalizar/', FinalizarServicioView.as_view(), name='servicio-finalizar'),
+    path('servicios/<int:servicio_pk>/recepcion/', RegistrarRecepcionView.as_view(), name='servicio-recepcion'),
     path('servicios/<int:servicio_pk>/cancelar/', CancelarServicioView.as_view(), name='servicio-cancelar'),
     path('servicios/<int:servicio_pk>/desactivar/', DesactivarServicioView.as_view(), name='servicio-desactivar'),
     path('seguimiento/<str:token>/', SeguimientoView.as_view(), name='seguimiento'),

@@ -15,11 +15,12 @@ from importlib import import_module
 from servicios import reglas
 from servicios.estados import EstadoComponente
 from servicios.models import EstadoServicio
-from servicios.models import Cliente, Componente, Cotizacion, EstadoCotizacion, HistorialComponente, HistorialServicio, MedioAprobacion, ResultadoAprobacion, Servicio
-from servicios.acciones import ErrorDeAccion, cambiar_estado_componente, cancelar_servicio, crear_cotizacion, finalizar_servicio, registrar_aprobacion_externa, registrar_respuesta
+from servicios.models import AprobacionServicio, Cliente, Componente, Cotizacion, EstadoCotizacion, HistorialComponente, HistorialServicio, MedioAprobacion, ResultadoAprobacion, Servicio
+from servicios.acciones import ErrorDeAccion, cambiar_estado_componente, cancelar_servicio, crear_cotizacion, finalizar_servicio, registrar_aprobacion_externa, registrar_recepcion, registrar_respuesta, reenviar_cotizacion
 from servicios.serializers import (
     CambiarEstadoComponenteInputSerializer,
     ComponenteAdministrativoSerializer,
+    CotizacionAdministrativaSerializer,
     ServicioAdministrativoSerializer,
 )
 from servicios.admin import ComponenteInline, ServicioAdmin
@@ -28,8 +29,9 @@ from usuarios.models import Usuario
 mapeo_flujo = import_module('servicios.migrations.0008_mapeo_datos_flujo')
 
 
-def componente(id=1, estado=EstadoComponente.PENDIENTE):
-    return {'id': id, 'estado': estado, 'trabajo_iniciado': False}
+def componente(id=1, estado=EstadoComponente.PENDIENTE, origen_espera=None):
+    return {'id': id, 'estado': estado, 'trabajo_iniciado': False,
+            'origen_espera': origen_espera}
 
 
 def cotizacion(estado='PENDIENTE', id=1):
@@ -54,7 +56,7 @@ class FlujoComponentePuroTest(SimpleTestCase):
     def test_tabla_de_destinos_manuales_por_estado(self):
         esperados = {
             'PENDIENTE': ['EN_REVISION'],
-            'EN_REVISION': ['COTIZANDO'],
+            'EN_REVISION': ['OPERARIO_TRABAJANDO'],
             'COTIZANDO': [],
             'ESPERANDO_APROBACION': ['RECHAZADO'],
             'OPERARIO_TRABAJANDO': ['EN_PRUEBAS'],
@@ -115,11 +117,20 @@ class FlujoComponentePuroTest(SimpleTestCase):
         )
         self.assertEqual((noop['permitido'], noop['tipo']), (True, 'noop'))
         invalida = reglas.resolver_transicion_componente(
-            snapshot(componentes=[dato]), dato, 'OPERARIO_TRABAJANDO'
+            snapshot(componentes=[dato]), dato, 'EN_PRUEBAS'
         )
         self.assertEqual(invalida['codigo'], 409)  # CL-03
 
-    # RF-FLU-06 / CL-06: rechazo no mueve el componente.
+    # RF-COH-01: `COTIZANDO` nunca es un destino manual.
+    def test_cotizando_nunca_es_destino_manual(self):
+        for estado in EstadoComponente.values:
+            destinos = reglas.estados_componente_seleccionables(
+                snapshot(componentes=[componente(estado=estado)]),
+                componente(estado=estado),
+            )
+            self.assertNotIn('COTIZANDO', destinos, estado)
+
+    # RF-COH-06: aprobar devuelve al estado de origen.
     def test_respuesta_aprobada_y_rechazada(self):
         dato = componente(estado='ESPERANDO_APROBACION')
         estado = snapshot(componentes=[dato])
@@ -127,23 +138,51 @@ class FlujoComponentePuroTest(SimpleTestCase):
             estado, dato, 'APROBADA', 'OPERARIO_TRABAJANDO'
         ), 'OPERARIO_TRABAJANDO')
         self.assertEqual(reglas.transicion_por_respuesta(
+            estado, dato, 'APROBADA', 'EN_REVISION'
+        ), 'EN_REVISION')
+        self.assertEqual(reglas.transicion_por_respuesta(
+            estado, dato, 'APROBADA', 'EN_PRUEBAS'
+        ), 'EN_PRUEBAS')
+        self.assertEqual(reglas.transicion_por_respuesta(
             estado, dato, 'APROBADA', 'LISTO_PARA_ENTREGA'
         ), 'EN_PRUEBAS')
         self.assertIsNone(reglas.transicion_por_respuesta(
             estado, dato, 'RECHAZADA', 'OPERARIO_TRABAJANDO'
         ))
 
-    def test_cotizacion_desde_los_cuatro_origenes(self):
-        for origen in ('COTIZANDO', 'OPERARIO_TRABAJANDO', 'EN_PRUEBAS',
-                       'LISTO_PARA_ENTREGA'):
+    def test_cotizacion_desde_origenes_validos(self):
+        for origen in ('EN_REVISION', 'OPERARIO_TRABAJANDO', 'EN_PRUEBAS'):
             dato = componente(estado=origen)
             self.assertEqual(reglas.transicion_por_cotizacion(
                 snapshot(componentes=[dato]), dato
-            ), 'ESPERANDO_APROBACION')
-        dato = componente(estado='PENDIENTE')
-        self.assertIsNone(reglas.transicion_por_cotizacion(
-            snapshot(componentes=[dato]), dato
-        ))
+            ), 'ESPERANDO_APROBACION', origen)
+        for origen in ('PENDIENTE', 'LISTO_PARA_ENTREGA'):
+            dato = componente(estado=origen)
+            self.assertIsNone(reglas.transicion_por_cotizacion(
+                snapshot(componentes=[dato]), dato
+            ), origen)
+
+    # RF-COH-03: cotización bloqueante pendiente impide avanzar (409).
+    def test_bloqueo_por_cotizacion_bloqueante(self):
+        dato = componente(estado='ESPERANDO_APROBACION', origen_espera='EN_PRUEBAS')
+        pendiente = snapshot(componentes=[dato], cotizaciones={1: [cotizacion('PENDIENTE')]})
+        decision = reglas.resolver_transicion_componente(
+            pendiente, dato, 'LISTO_PARA_ENTREGA', 'Pruebas OK'
+        )
+        self.assertEqual(decision['codigo'], 409)
+        self.assertFalse(decision['permitido'])
+        self.assertIn('bloqueante', decision['motivo'])
+
+    # RF-COH-05: cotización no bloqueante deja avanzar desde el origen.
+    def test_cotizacion_no_bloqueante_no_detiene(self):
+        dato = componente(estado='ESPERANDO_APROBACION', origen_espera='EN_PRUEBAS')
+        no_bloqueante = {'id': 1, 'es_bloqueante': False, 'estado': 'PENDIENTE'}
+        estado = snapshot(componentes=[dato], cotizaciones={1: [no_bloqueante]})
+        self.assertEqual(reglas.estados_componente_seleccionables(estado, dato),
+                         ['RECHAZADO', 'LISTO_PARA_ENTREGA'])
+        self.assertTrue(reglas.resolver_transicion_componente(
+            estado, dato, 'LISTO_PARA_ENTREGA', 'Pruebas OK'
+        )['permitido'])
 
 
 class FlujoServicioPuroTest(SimpleTestCase):
@@ -193,7 +232,7 @@ class FlujoAccionesTest(TestCase):
         self.servicio = Servicio.objects.create(cliente=self.cliente, descripcion_solicitud='Prueba')
         self.componente = Componente.objects.create(servicio=self.servicio, tipo='Bomba')
 
-    def cotizar(self, estado=EstadoComponente.COTIZANDO):
+    def cotizar(self, estado=EstadoComponente.EN_REVISION):
         self.componente.estado = estado
         self.componente.save(update_fields=['estado'])
         self.componente.refresh_from_db()
@@ -209,12 +248,10 @@ class FlujoAccionesTest(TestCase):
         self.assertEqual(HistorialComponente.objects.count(), 1)
         self.assertEqual(HistorialServicio.objects.filter(estado=EstadoServicio.EN_CURSO).count(), 1)
 
-    def test_cotizacion_mueve_los_cuatro_origenes_y_conserva_datos(self):
-        for estado in ('COTIZANDO', 'OPERARIO_TRABAJANDO', 'EN_PRUEBAS', 'LISTO_PARA_ENTREGA'):
-            componente = self.componente if estado == 'COTIZANDO' else Componente.objects.create(servicio=self.servicio, tipo=estado, estado=estado, fase='EN_EJECUCION')
-            if estado == 'COTIZANDO':
-                componente.estado = estado
-                componente.save(update_fields=['estado'])
+    def test_cotizacion_mueve_origenes_validos_y_conserva_datos(self):
+        for estado in ('EN_REVISION', 'OPERARIO_TRABAJANDO', 'EN_PRUEBAS'):
+            componente = Componente.objects.create(
+                servicio=self.servicio, tipo=estado, estado=estado, fase='EN_EJECUCION')
             fase = componente.fase
             cotizacion = crear_cotizacion(datos={'servicio': self.servicio, 'componente': componente,
                                                   'descripcion': 'Adicional', 'total': 1}, usuario=None)
@@ -223,13 +260,68 @@ class FlujoAccionesTest(TestCase):
             self.assertEqual(componente.fase, fase)
             self.assertEqual(cotizacion.componente_id, componente.pk)
 
+    # RF-COH-04 / CL-COH-04/05: no se cotiza desde PENDIENTE ni LISTO_PARA_ENTREGA.
+    def test_cotizacion_rechazada_desde_origenes_invalidos(self):
+        for estado in ('PENDIENTE', 'LISTO_PARA_ENTREGA'):
+            componente = Componente.objects.create(
+                servicio=self.servicio, tipo=estado, estado=estado)
+            with self.assertRaises(ErrorDeAccion) as error:
+                crear_cotizacion(datos={'servicio': self.servicio, 'componente': componente,
+                                        'descripcion': 'X', 'total': 1}, usuario=None)
+            self.assertEqual(error.exception.codigo, 409, estado)
+
+    # RF-COH-02: EN_REVISION -> OPERARIO_TRABAJANDO inicia trabajo.
+    def test_en_revision_inicia_trabajo(self):
+        self.componente.estado = EstadoComponente.EN_REVISION
+        self.componente.save(update_fields=['estado'])
+        cambiar_estado_componente(servicio=self.servicio, componente_id=self.componente.pk,
+                                  nuevo_estado=EstadoComponente.OPERARIO_TRABAJANDO)
+        self.componente.refresh_from_db()
+        self.assertEqual(self.componente.estado, EstadoComponente.OPERARIO_TRABAJANDO)
+        self.assertTrue(self.componente.trabajo_iniciado)
+        self.assertEqual(self.componente.fase, 'DESMONTAJE_INICIADO')
+        self.assertIsNotNone(self.componente.fecha_inicio_trabajo)
+
+    # RF-COH-05: cotización no bloqueante deja avanzar tras crearla.
+    def test_cotizacion_no_bloqueante_permite_avanzar(self):
+        self.componente.estado = EstadoComponente.EN_PRUEBAS
+        self.componente.save(update_fields=['estado'])
+        crear_cotizacion(datos={'servicio': self.servicio, 'componente': self.componente,
+                                'descripcion': 'No bloqueante', 'total': 100,
+                                'es_bloqueante': False}, usuario=None)
+        self.componente.refresh_from_db()
+        self.assertEqual(self.componente.estado, EstadoComponente.ESPERANDO_APROBACION)
+        cambiar_estado_componente(servicio=self.servicio, componente_id=self.componente.pk,
+                                  nuevo_estado=EstadoComponente.LISTO_PARA_ENTREGA,
+                                  comentario='Pruebas OK')
+        self.componente.refresh_from_db()
+        self.assertEqual(self.componente.estado, EstadoComponente.LISTO_PARA_ENTREGA)
+
+    # RF-COH-03: cotización bloqueante pendiente impide avanzar.
+    def test_cotizacion_bloqueante_impide_avanzar(self):
+        self.componente.estado = EstadoComponente.EN_PRUEBAS
+        self.componente.save(update_fields=['estado'])
+        crear_cotizacion(datos={'servicio': self.servicio, 'componente': self.componente,
+                                'descripcion': 'Bloqueante', 'total': 100,
+                                'es_bloqueante': True}, usuario=None)
+        self.componente.refresh_from_db()
+        self.assertEqual(self.componente.estado, EstadoComponente.ESPERANDO_APROBACION)
+        with self.assertRaises(ErrorDeAccion) as error:
+            cambiar_estado_componente(servicio=self.servicio, componente_id=self.componente.pk,
+                                      nuevo_estado=EstadoComponente.LISTO_PARA_ENTREGA,
+                                      comentario='Pruebas OK')
+        self.assertEqual(error.exception.codigo, 409)
+        self.assertIn('bloqueante', error.exception.detalle)
+        self.componente.refresh_from_db()
+        self.assertEqual(self.componente.estado, EstadoComponente.ESPERANDO_APROBACION)
+
     def test_aprobacion_y_rechazo_no_mueven_rechazo(self):
         cotizacion = self.cotizar()
         registrar_respuesta(servicio=self.servicio, componente_id=self.componente.pk,
                             cotizacion_id=cotizacion.pk, resultado=ResultadoAprobacion.APROBADA,
                             canal=MedioAprobacion.WEB)
         self.componente.refresh_from_db()
-        self.assertEqual(self.componente.estado, EstadoComponente.OPERARIO_TRABAJANDO)
+        self.assertEqual(self.componente.estado, EstadoComponente.EN_REVISION)
         cotizacion = self.cotizar(EstadoComponente.EN_PRUEBAS)
         registrar_aprobacion_externa(cotizacion_id=cotizacion.pk, resultado=ResultadoAprobacion.RECHAZADA,
                                      medio=MedioAprobacion.WHATSAPP, usuario=None)
@@ -269,20 +361,63 @@ class FlujoAccionesTest(TestCase):
         self.assertEqual(self.componente.estado, EstadoComponente.RECHAZADO)
         self.assertEqual(self.servicio.estado, EstadoServicio.CANCELADO)
 
-    def test_respuesta_repetida_igual_es_noop_y_contradictoria_es_409(self):
+    def test_respuesta_repetida_siempre_es_409(self):
         cotizacion = self.cotizar()
         primera = registrar_respuesta(servicio=self.servicio, componente_id=self.componente.pk,
                                       cotizacion_id=cotizacion.pk, resultado=ResultadoAprobacion.APROBADA,
                                       canal=MedioAprobacion.WEB)
-        segunda = registrar_respuesta(servicio=self.servicio, componente_id=self.componente.pk,
-                                      cotizacion_id=cotizacion.pk, resultado=ResultadoAprobacion.APROBADA,
-                                      canal=MedioAprobacion.WEB)
-        self.assertEqual(primera.pk, segunda.pk)
         with self.assertRaises(ErrorDeAccion) as error:
             registrar_respuesta(servicio=self.servicio, componente_id=self.componente.pk,
-                                cotizacion_id=cotizacion.pk, resultado=ResultadoAprobacion.RECHAZADA,
+                                cotizacion_id=cotizacion.pk, resultado=ResultadoAprobacion.APROBADA,
                                 canal=MedioAprobacion.WEB)
         self.assertEqual(error.exception.codigo, 409)
+
+    def test_respuesta_externa_repetida_igual_es_409(self):
+        cotizacion = self.cotizar()
+        registrar_aprobacion_externa(
+            cotizacion_id=cotizacion.pk, resultado=ResultadoAprobacion.APROBADA,
+            medio=MedioAprobacion.WHATSAPP, usuario=None,
+        )
+        with self.assertRaises(ErrorDeAccion) as error:
+            registrar_aprobacion_externa(
+                cotizacion_id=cotizacion.pk, resultado=ResultadoAprobacion.APROBADA,
+                medio=MedioAprobacion.WHATSAPP, usuario=None,
+            )
+        self.assertEqual(error.exception.codigo, 409)
+
+    def test_motivo_finalizacion_acepta_texto_largo(self):
+        self.componente.estado = EstadoComponente.EN_PRUEBAS
+        self.componente.save(update_fields=['estado'])
+        motivo = 'x' * 120
+        cambiar_estado_componente(
+            servicio=self.servicio, componente_id=self.componente.pk,
+            nuevo_estado=EstadoComponente.LISTO_PARA_ENTREGA, comentario=motivo,
+        )
+        self.componente.refresh_from_db()
+        self.assertEqual(self.componente.motivo_finalizacion, motivo)
+
+    def test_reenviar_cotizacion_conserva_detalles_y_recalcula_total(self):
+        cotizacion = self.cotizar()
+        cotizacion.estado = EstadoCotizacion.RECHAZADA
+        cotizacion.save(update_fields=['estado'])
+        cotizacion.detalles.create(descripcion='Cambio de sellos', valor=200000, cantidad=2)
+        cotizacion.detalles.create(descripcion='Prueba', valor=50000, cantidad=1)
+
+        nueva = reenviar_cotizacion(
+            cotizacion_id=cotizacion.pk,
+            datos={},
+            usuario=None,
+        )
+
+        self.assertEqual(nueva.reemplaza_a_id, cotizacion.pk)
+        self.assertEqual(nueva.componente_id, cotizacion.componente_id)
+        self.assertEqual(nueva.tipo, cotizacion.tipo)
+        self.assertEqual(nueva.es_bloqueante, cotizacion.es_bloqueante)
+        self.assertEqual(nueva.total, 450000)
+        self.assertEqual(
+            list(nueva.detalles.values_list('descripcion', 'valor', 'cantidad')),
+            [('Cambio de sellos', 200000, 2), ('Prueba', 50000, 1)],
+        )
 
 
 class FlujoContratosApiTest(TestCase):
@@ -304,7 +439,44 @@ class FlujoContratosApiTest(TestCase):
         self.assertNotIn('iniciar_trabajo', datos_componente['acciones_disponibles'])
         datos_servicio = ServicioAdministrativoSerializer(self.servicio).data
         self.assertNotIn('estados_seleccionables', datos_servicio)
-        self.assertEqual(datos_servicio['acciones_disponibles'], ['cancelar_servicio'])
+        self.assertEqual(datos_servicio['acciones_disponibles'], [
+            'agregar_componente', 'crear_cotizacion', 'registrar_recepcion',
+            'cancelar_servicio',
+        ])
+        self.assertIn('editar_componente', datos_componente['acciones_disponibles'])
+        self.assertIn('eliminar_componente', datos_componente['acciones_disponibles'])
+
+    def test_servicio_deja_de_ofrecer_recepcion_cuando_ya_fue_registrada(self):
+        registrar_recepcion(servicio=self.servicio, comentario='Recibido')
+        self.servicio.refresh_from_db()
+        datos = ServicioAdministrativoSerializer(self.servicio).data
+        self.assertNotIn('registrar_recepcion', datos['acciones_disponibles'])
+
+    def test_cotizacion_expone_acciones_segun_estado_y_sucesora(self):
+        self.componente.estado = EstadoComponente.EN_REVISION
+        self.componente.save(update_fields=['estado'])
+        cotizacion = crear_cotizacion(datos={
+            'servicio': self.servicio, 'componente': self.componente, 'tipo': 'INICIAL',
+            'descripcion': 'Trabajo',
+            'detalles': [{'descripcion': 'Sellos', 'valor': 100, 'cantidad': 1}],
+        }, usuario=None)
+        acciones = lambda c: CotizacionAdministrativaSerializer(c).data['acciones_disponibles']
+        self.assertEqual(acciones(cotizacion), ['editar_pendiente', 'registrar_respuesta'])
+        cotizacion.estado = EstadoCotizacion.RECHAZADA
+        cotizacion.save(update_fields=['estado'])
+        self.assertEqual(acciones(cotizacion), ['reenviar'])
+        nueva = reenviar_cotizacion(cotizacion_id=cotizacion.pk, datos={}, usuario=None)
+        self.assertEqual(acciones(cotizacion), [])
+        self.assertEqual(acciones(nueva), ['editar_pendiente', 'registrar_respuesta'])
+
+    def test_servicio_cerrado_no_ofrece_acciones_ni_estados(self):
+        self.servicio.estado = EstadoServicio.CANCELADO
+        self.servicio.save(update_fields=['estado'])
+        datos_componente = ComponenteAdministrativoSerializer(self.componente).data
+        datos_servicio = ServicioAdministrativoSerializer(self.servicio).data
+        self.assertEqual(datos_servicio['acciones_disponibles'], [])
+        self.assertEqual(datos_componente['acciones_disponibles'], [])
+        self.assertEqual(datos_componente['estados_seleccionables'], [])
 
     def test_entrada_componente_usa_catalogo_nuevo_y_comentario(self):
         serializer = CambiarEstadoComponenteInputSerializer(data={
@@ -350,17 +522,18 @@ class FlujoEndpointsYPermisosTest(TestCase):
         self.servicio.refresh_from_db()
         self.assertEqual(self.servicio.estado, EstadoServicio.EN_CURSO)
 
-    def test_cancelacion_exige_comentario_y_excluye_seguimiento(self):
+    def test_cancelacion_exige_comentario_y_muestra_cancelado_en_seguimiento(self):
         url = reverse('servicio-cancelar', kwargs={'servicio_pk': self.servicio.pk})
         self.assertEqual(self.api.post(url, {}, format='json').status_code, 400)
         respuesta = self.api.post(url, {'comentario': 'No continúa'}, format='json')
         self.assertEqual(respuesta.status_code, 200)
-        self.assertEqual(
-            self.api.get(reverse('seguimiento', kwargs={
-                'token': self.servicio.token_seguimiento,
-            })).status_code,
-            404,
-        )
+        seguimiento = self.api.get(reverse('seguimiento', kwargs={
+            'token': self.servicio.token_seguimiento,
+        }))
+        self.assertEqual(seguimiento.status_code, 200)
+        self.assertTrue(seguimiento.data['cancelado'])
+        self.assertEqual(seguimiento.data['cotizaciones_pendientes'], [])
+        self.assertNotIn('comentario', str(seguimiento.data['historial']))
 
     def test_permisos_y_dashboard_solo_muestran_catalogo_nuevo(self):
         self.api.force_authenticate(user=None)
@@ -376,7 +549,7 @@ class FlujoEndpointsYPermisosTest(TestCase):
         )
 
     def test_aprobacion_publica_por_token_es_la_excepcion_de_permiso(self):
-        self.componente.estado = EstadoComponente.COTIZANDO
+        self.componente.estado = EstadoComponente.EN_REVISION
         self.componente.save(update_fields=['estado'])
         cotizacion = crear_cotizacion(datos={
             'servicio': self.servicio, 'componente': self.componente,
@@ -387,12 +560,134 @@ class FlujoEndpointsYPermisosTest(TestCase):
             reverse('seguimiento-aprobar', kwargs={
                 'token': self.servicio.token_seguimiento,
             }),
-            {'resultado': ResultadoAprobacion.APROBADA}, format='json',
+            {'cotizacion_id': cotizacion.pk, 'resultado': ResultadoAprobacion.APROBADA}, format='json',
         )
         self.assertEqual(respuesta.status_code, 201)
         self.assertEqual(respuesta.data['cotizacion'], cotizacion.pk)
         self.componente.refresh_from_db()
-        self.assertEqual(self.componente.estado, EstadoComponente.OPERARIO_TRABAJANDO)
+        self.assertEqual(self.componente.estado, EstadoComponente.EN_REVISION)
+
+    def test_aprobacion_publica_responde_la_cotizacion_indicada(self):
+        segundo = Componente.objects.create(servicio=self.servicio, tipo='Motor', estado=EstadoComponente.EN_REVISION)
+        self.componente.estado = EstadoComponente.EN_REVISION
+        self.componente.save(update_fields=['estado'])
+        primera = crear_cotizacion(datos={
+            'servicio': self.servicio, 'componente': self.componente,
+            'descripcion': 'Primera', 'total': 100,
+        }, usuario=None)
+        segunda = crear_cotizacion(datos={
+            'servicio': self.servicio, 'componente': segundo,
+            'descripcion': 'Segunda', 'total': 200,
+        }, usuario=None)
+        self.api.force_authenticate(user=None)
+        respuesta = self.api.post(
+            reverse('seguimiento-aprobar', kwargs={'token': self.servicio.token_seguimiento}),
+            {'cotizacion_id': segunda.pk, 'resultado': ResultadoAprobacion.APROBADA}, format='json',
+        )
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(respuesta.data['cotizacion'], segunda.pk)
+        primera.refresh_from_db()
+        self.assertEqual(primera.estado, EstadoCotizacion.PENDIENTE)
+
+    def test_respuesta_publica_repetida_igual_es_409(self):
+        self.componente.estado = EstadoComponente.EN_REVISION
+        self.componente.save(update_fields=['estado'])
+        cotizacion = crear_cotizacion(datos={
+            'servicio': self.servicio, 'componente': self.componente,
+            'descripcion': 'Trabajo', 'total': 100,
+        }, usuario=None)
+        self.api.force_authenticate(user=None)
+        url = reverse('seguimiento-aprobar', kwargs={'token': self.servicio.token_seguimiento})
+        datos = {'cotizacion_id': cotizacion.pk, 'resultado': ResultadoAprobacion.APROBADA}
+        self.assertEqual(self.api.post(url, datos, format='json').status_code, 201)
+        self.assertEqual(self.api.post(url, datos, format='json').status_code, 409)
+
+    def test_respuesta_http_repetida_con_resultado_contrario_es_409(self):
+        """Una cotización respondida no acepta una segunda decisión distinta."""
+        self.componente.estado = EstadoComponente.EN_REVISION
+        self.componente.save(update_fields=['estado'])
+        cotizacion = crear_cotizacion(datos={
+            'servicio': self.servicio, 'componente': self.componente,
+            'descripcion': 'Trabajo', 'total': 100,
+        }, usuario=None)
+        url = reverse('componente-respuesta', kwargs={
+            'servicio_pk': self.servicio.pk,
+            'componente_pk': self.componente.pk,
+        })
+
+        primera = self.api.post(url, {
+            'cotizacion_id': cotizacion.pk,
+            'resultado': ResultadoAprobacion.APROBADA,
+            'canal': MedioAprobacion.WEB,
+        }, format='json')
+        self.assertEqual(primera.status_code, 201)
+
+        segunda = self.api.post(url, {
+            'cotizacion_id': cotizacion.pk,
+            'resultado': ResultadoAprobacion.RECHAZADA,
+            'canal': MedioAprobacion.WEB,
+        }, format='json')
+        self.assertEqual(segunda.status_code, 409)
+        self.assertEqual(
+            AprobacionServicio.objects.filter(cotizacion=cotizacion).count(), 1,
+        )
+        cotizacion.refresh_from_db()
+        self.componente.refresh_from_db()
+        self.assertEqual(cotizacion.estado, EstadoCotizacion.APROBADA)
+        self.assertEqual(self.componente.estado, EstadoComponente.EN_REVISION)
+
+    def test_seguimiento_sirve_el_paso_publico_del_componente(self):
+        self.componente.estado = EstadoComponente.EN_PRUEBAS
+        self.componente.save(update_fields=['estado'])
+        self.api.force_authenticate(user=None)
+        respuesta = self.api.get(reverse('seguimiento', kwargs={'token': self.servicio.token_seguimiento}))
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta.data['componentes'][0]['paso_publico'], 'Pruebas')
+
+    def test_recepcion_registra_fecha_pasa_en_curso_y_es_visible(self):
+        self.assertEqual(self.servicio.estado, EstadoServicio.SOLICITADO)
+        respuesta = self.api.post(
+            reverse('servicio-recepcion', kwargs={'servicio_pk': self.servicio.pk}),
+            {'comentario': 'Componentes recibidos en almacén.'}, format='json',
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        self.servicio.refresh_from_db()
+        self.assertIsNotNone(self.servicio.fecha_recepcion)
+        self.assertEqual(self.servicio.estado, EstadoServicio.EN_CURSO)
+        entrada = HistorialServicio.objects.get(
+            servicio=self.servicio, comentario='Componentes recibidos en almacén.')
+        self.assertTrue(entrada.visible_cliente)
+        self.api.force_authenticate(user=None)
+        seguimiento = self.api.get(reverse('seguimiento', kwargs={
+            'token': self.servicio.token_seguimiento,
+        }))
+        self.assertIsNotNone(seguimiento.data['fecha_recepcion'])
+        self.assertIn('Componentes recibidos en almacén.',
+                      str(seguimiento.data['historial']))
+
+    def test_recepcion_repetida_es_409(self):
+        url = reverse('servicio-recepcion', kwargs={'servicio_pk': self.servicio.pk})
+        self.assertEqual(self.api.post(url, {}, format='json').status_code, 200)
+        self.assertEqual(self.api.post(url, {}, format='json').status_code, 409)
+
+    def test_recepcion_en_curso_conserva_estado(self):
+        self.servicio.estado = EstadoServicio.EN_CURSO
+        self.servicio.save(update_fields=['estado'])
+        self.api.post(
+            reverse('servicio-recepcion', kwargs={'servicio_pk': self.servicio.pk}),
+            {}, format='json',
+        )
+        self.servicio.refresh_from_db()
+        self.assertIsNotNone(self.servicio.fecha_recepcion)
+        self.assertEqual(self.servicio.estado, EstadoServicio.EN_CURSO)
+
+    def test_recepcion_exige_autenticacion(self):
+        self.api.force_authenticate(user=None)
+        respuesta = self.api.post(
+            reverse('servicio-recepcion', kwargs={'servicio_pk': self.servicio.pk}),
+            {}, format='json',
+        )
+        self.assertIn(respuesta.status_code, (401, 403))
 
 
 class FlujoAdminYMigracionTest(TestCase):

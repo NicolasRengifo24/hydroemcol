@@ -1,5 +1,6 @@
 import unicodedata
 
+from django.conf import settings
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db import transaction
 from django.db.models import Count, Q, F, Value
@@ -17,6 +18,7 @@ from .acciones import (
     cambiar_estado_componente,
     finalizar_servicio,
     cancelar_servicio,
+    registrar_recepcion,
     registrar_respuesta,
     crear_cotizacion,
     editar_cotizacion,
@@ -29,6 +31,7 @@ from .acciones import (
     desactivar_servicio,
 )
 from .almacenamiento import guardar_fotografias
+from .mensajes import construir_bloque_whatsapp
 from .models import (
     AprobacionServicio,
     Cliente,
@@ -50,6 +53,7 @@ from .serializers import (
     CambiarEstadoComponenteInputSerializer,
     CancelarServicioInputSerializer,
     FinalizarServicioInputSerializer,
+    RegistrarRecepcionInputSerializer,
     ClienteSerializer,
     ComponenteAdministrativoSerializer,
     ComponenteSerializer,
@@ -70,6 +74,7 @@ from .serializers import (
     FOTOGRAFIA_FORMATOS,
     FOTOGRAFIA_TAMANO_MAX,
 )
+from .validators import validar_celular_colombiano
 
 
 def _client_ip(request):
@@ -119,10 +124,9 @@ class ServicioViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = self.queryset
         if self.action == 'list':
+            # Los cancelados aparecen en el listado administrativo; el filtro
+            # de estado permite aislarlos.
             queryset = queryset.filter(activo=True)
-            # Los servicios cancelados salen de los listados operativos
-            # (RF-EST-13) pero siguen consultables por su detalle.
-            queryset = queryset.exclude(estado=EstadoServicio.CANCELADO)
             queryset = _filtrar_servicios(queryset, self.request)
         if self.action == 'retrieve':
             queryset = _optimizar_detalle(queryset)
@@ -132,7 +136,7 @@ class ServicioViewSet(viewsets.ModelViewSet):
         queryset = self.filter_queryset(self.get_queryset())
         ordering = _ordenamiento(request)
         queryset = queryset.order_by(ordering)
-        paginator = Paginator(queryset, 20)
+        paginator = Paginator(queryset, 10)
         try:
             pagina = paginator.page(request.query_params.get('page', 1))
         except (PageNotAnInteger, EmptyPage):
@@ -150,7 +154,7 @@ class ServicioViewSet(viewsets.ModelViewSet):
             'next': enlace(pagina.next_page_number() if pagina.has_next() else None),
             'previous': enlace(pagina.previous_page_number() if pagina.has_previous() else None),
             'page': pagina.number,
-            'page_size': 20,
+            'page_size': 10,
             'results': ServicioResumenAdministrativoSerializer(pagina.object_list, many=True).data,
         })
 
@@ -539,6 +543,42 @@ class CambiarEstadoComponenteView(_AccionDeComponente):
         )
 
 
+class ServicioWhatsAppView(APIView):
+    """Prepara, bajo demanda, las tarjetas de WhatsApp de un servicio."""
+
+    permission_classes = [EsAdministrativo]
+
+    def get(self, request, servicio_pk):
+        servicio = get_object_or_404(
+            Servicio.objects.select_related('cliente'), pk=servicio_pk,
+        )
+        componentes = servicio.componentes.all()
+        datos_servicio = {
+            'codigo': servicio.codigo,
+            'estado': servicio.estado,
+            'activo': servicio.activo,
+            'token_seguimiento': servicio.token_seguimiento,
+        }
+        datos_componentes = [
+            {
+                'id': componente.pk,
+                'tipo': componente.tipo,
+                'referencia': componente.referencia,
+                'estado': componente.estado,
+                'motivo_finalizacion': componente.motivo_finalizacion,
+            }
+            for componente in componentes
+        ]
+        numero = validar_celular_colombiano(servicio.cliente.whatsapp)
+        bloque = construir_bloque_whatsapp(
+            datos_servicio,
+            datos_componentes,
+            settings.SEGUIMIENTO_BASE_URL,
+            numero,
+        )
+        return Response(bloque)
+
+
 class FinalizarServicioView(APIView):
     """Cierra el servicio (RF-COT-11).
 
@@ -570,6 +610,38 @@ class FinalizarServicioView(APIView):
 
         return Response(
             ServicioAdministrativoSerializer(servicio).data, status=status.HTTP_200_OK,
+        )
+
+
+class RegistrarRecepcionView(APIView):
+    """Registra que los componentes del servicio llegaron al almacén.
+
+    La recepción es una acción explícita del administrativo, no automática. Se
+    registra una sola vez y, si el servicio seguía en `SOLICITADO`, lo pasa a
+    `EN_CURSO`. El comentario es opcional y queda visible al cliente.
+    """
+
+    permission_classes = [EsAdministrativo]
+
+    def post(self, request, servicio_pk):
+        servicio = get_object_or_404(Servicio, pk=servicio_pk)
+        serializer = RegistrarRecepcionInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            servicio = registrar_recepcion(
+                servicio=servicio,
+                comentario=serializer.validated_data.get('comentario', ''),
+                usuario=request.user,
+            )
+        except ErrorDeAccion as error:
+            return Response(
+                {'detail': error.detalle, **error.extra},
+                status=error.codigo,
+            )
+
+        return Response(
+            ServicioAdministrativoSerializer(servicio).data,
+            status=status.HTTP_200_OK,
         )
 
 
@@ -684,29 +756,28 @@ class DashboardAdministrativoView(APIView):
     permission_classes = [EsAdministrativo]
 
     def get(self, request):
-        activos = (
-            Servicio.objects.filter(activo=True)
-            .exclude(estado=EstadoServicio.CANCELADO)
-            .select_related('cliente')
-        )
+        activos = Servicio.objects.filter(activo=True).select_related('cliente')
         contadores = {
             estado: activos.filter(estado=estado).count()
             for estado, _ in EstadoServicio.choices
         }
-        pendientes = activos.filter(
+        # Trabajo en curso: los cancelados cuentan en los contadores, pero no
+        # generan trabajo pendiente ni aparecen en recientes.
+        operativos = activos.exclude(estado=EstadoServicio.CANCELADO)
+        pendientes = operativos.filter(
             Q(estado__in=[
                 EstadoServicio.SOLICITADO,
             ])
             | Q(componentes__estado='ESPERANDO_APROBACION')
         ).distinct().order_by('-fecha_solicitud')
-        recientes = activos.order_by('-fecha_solicitud')[:10]
+        recientes = operativos.order_by('-fecha_solicitud')[:10]
         datos = {
             'total_activos': activos.count(),
             'contadores': contadores,
             'recientes': recientes,
             'pendientes_atencion': pendientes,
             'definicion': {
-                'recientes': 'Últimos 10 servicios activos por fecha_solicitud descendente.',
+                'recientes': 'Últimos 10 servicios no cancelados por fecha_solicitud descendente.',
                 'pendientes_atencion': (
                     'Servicios solicitados o con un componente esperando aprobación.'
                 ),
@@ -728,11 +799,9 @@ class SeguimientoView(generics.RetrieveAPIView):
     lookup_url_kwarg = 'token'
 
     def get_queryset(self):
-        # El seguimiento público ordinario no expone servicios cancelados
-        # (RF-EST-13), coherente con el listado y el dashboard.
-        return Servicio.objects.filter(activo=True).exclude(
-            estado=EstadoServicio.CANCELADO
-        )
+        # Un servicio cancelado sigue activo: el cliente ve que fue cancelado
+        # (su enlace no es inválido). Sus cotizaciones pendientes no se listan.
+        return Servicio.objects.filter(activo=True)
 
 
 class SeguimientoAprobarView(APIView):
@@ -751,16 +820,13 @@ class SeguimientoAprobarView(APIView):
         serializer = AprobacionWebSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        cotizacion = (
-            servicio.cotizaciones
-            .filter(estado=EstadoCotizacion.PENDIENTE)
-            .order_by('-fecha_creacion')
-            .first()
-        )
+        cotizacion = servicio.cotizaciones.filter(
+            pk=serializer.validated_data['cotizacion_id'],
+        ).first()
         if not cotizacion:
             return Response(
-                {'detail': 'No hay cotización pendiente de aprobación.'},
-                status=status.HTTP_400_BAD_REQUEST,
+                {'detail': 'La cotización no pertenece a este servicio.'},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         try:
@@ -831,7 +897,7 @@ class SolicitudPublicaCreateView(APIView):
         from django.db import transaction
 
         with transaction.atomic():
-            cliente, _ = Cliente.objects.get_or_create(
+            cliente, creado = Cliente.objects.get_or_create(
                 email=data['correo_electronico'].strip().lower(),
                 defaults={
                     'nombre': data['nombre_cliente'].strip(),
@@ -840,6 +906,9 @@ class SolicitudPublicaCreateView(APIView):
                     'whatsapp': data.get('whatsapp', '').strip(),
                 },
             )
+            if not creado and not cliente.whatsapp:
+                cliente.whatsapp = data['whatsapp']
+                cliente.save(update_fields=['whatsapp'])
             servicio = Servicio.objects.create(
                 cliente=cliente,
                 tipo_servicio=TipoServicio.PRUEBA,

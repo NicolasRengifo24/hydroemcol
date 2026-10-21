@@ -6,6 +6,7 @@ from .estados import (
     CanalRespuesta,
     ESTADOS_FINALIZACION,
     EstadoComponente,
+    paso_publico_componente,
 )
 from .models import (
     AprobacionServicio,
@@ -40,6 +41,15 @@ def construir_hoy(servicio):
     """
     componentes = list(servicio.componentes.all())
 
+    # Origen de la espera por componente: estado desde el que se creó la
+    # cotización pendiente, leído del historial (spec 011, RF-COH-06/05).
+    origen_espera = {}
+    for fila in HistorialComponente.objects.filter(
+        componente__servicio=servicio,
+        estado_nuevo=EstadoComponente.ESPERANDO_APROBACION,
+    ).order_by('fecha'):
+        origen_espera[fila.componente_id] = fila.estado_anterior
+
     cotizaciones_por_componente = {}
     for cotizacion in servicio.cotizaciones.all():
         if cotizacion.componente_id is None:
@@ -56,6 +66,7 @@ def construir_hoy(servicio):
                 'id': componente.pk,
                 'estado': componente.estado,
                 'trabajo_iniciado': componente.trabajo_iniciado,
+                'origen_espera': origen_espera.get(componente.pk),
             }
             for componente in componentes
         ],
@@ -127,6 +138,9 @@ class ComponenteSerializer(serializers.ModelSerializer):
 
 
 class DetalleCotizacionSerializer(serializers.ModelSerializer):
+    valor = serializers.DecimalField(max_digits=12, decimal_places=0, min_value=0)
+    cantidad = serializers.IntegerField(min_value=1)
+
     class Meta:
         model = DetalleCotizacion
         fields = ['id', 'descripcion', 'valor', 'cantidad']
@@ -187,6 +201,7 @@ class AprobacionWebSerializer(serializers.Serializer):
     No pide 'medio': el sistema sabe que la aprobación es por la web (WEB).
     """
 
+    cotizacion_id = serializers.IntegerField()
     resultado = serializers.ChoiceField(choices=ResultadoAprobacion.choices)
     observacion = serializers.CharField(required=False, allow_blank=True)
 
@@ -261,7 +276,7 @@ class CotizacionSerializer(serializers.ModelSerializer):
 class ReenviarCotizacionSerializer(serializers.Serializer):
     descripcion = serializers.CharField(required=False, allow_blank=True)
     observaciones = serializers.CharField(required=False, allow_blank=True)
-    detalles = DetalleCotizacionSerializer(many=True, required=False, default=list)
+    detalles = DetalleCotizacionSerializer(many=True, required=False)
 
 
 class ServicioSerializer(serializers.ModelSerializer):
@@ -352,6 +367,7 @@ class CotizacionAdministrativaSerializer(serializers.ModelSerializer):
     versiones = serializers.SerializerMethodField()
     etiqueta_componente = serializers.SerializerMethodField()
     total = serializers.SerializerMethodField()
+    acciones_disponibles = serializers.SerializerMethodField()
 
     class Meta:
         model = Cotizacion
@@ -359,7 +375,7 @@ class CotizacionAdministrativaSerializer(serializers.ModelSerializer):
             'id', 'numero', 'tipo', 'descripcion', 'total', 'estado',
             'fecha_creacion', 'observaciones', 'creada_por', 'componente',
             'etiqueta_componente', 'es_bloqueante', 'canal', 'detalles',
-            'aprobaciones', 'reemplaza_a', 'versiones',
+            'aprobaciones', 'reemplaza_a', 'versiones', 'acciones_disponibles',
         ]
 
     def get_creada_por(self, obj):
@@ -373,6 +389,20 @@ class CotizacionAdministrativaSerializer(serializers.ModelSerializer):
 
     def get_total(self, obj):
         return str(obj.total)
+
+    def get_acciones_disponibles(self, obj):
+        """Acciones que el backend admite sobre esta cotización.
+
+        Una cotización rechazada siempre necesita una versión nueva, así que
+        "reenviar" queda disponible hasta que exista una sucesora.
+        """
+        if obj.servicio.estado in (EstadoServicio.FINALIZADO, EstadoServicio.CANCELADO):
+            return []
+        if obj.estado == EstadoCotizacion.PENDIENTE:
+            return ['editar_pendiente', 'registrar_respuesta']
+        if obj.estado == EstadoCotizacion.RECHAZADA and not obj.versiones.exists():
+            return ['reenviar']
+        return []
 
 
 class HistorialComponenteAdministrativoSerializer(serializers.ModelSerializer):
@@ -407,7 +437,7 @@ class ComponenteAdministrativoSerializer(ComponenteSerializer):
             return []
         hoy = construir_hoy(obj.servicio)
         componente = next(c for c in hoy['componentes'] if c['id'] == obj.pk)
-        acciones = []
+        acciones = ['editar_componente', 'eliminar_componente']
         if obj.estado in ESTADOS_FINALIZACION:
             acciones.append('corregir_finalizacion')
         if any(
@@ -423,7 +453,10 @@ class ComponenteAdministrativoSerializer(ComponenteSerializer):
 
         Las calcula `reglas.py`: excluyen los estados derivados y, en
         `RECHAZADO_BLOQUEANTE`, solo ofrecen finalizar (RF-EST-01).
+        En un servicio cerrado no hay opciones: `reglas.py` rechaza todo cambio.
         """
+        if obj.servicio.estado in (EstadoServicio.FINALIZADO, EstadoServicio.CANCELADO):
+            return []
         hoy = construir_hoy(obj.servicio)
         componente = next(c for c in hoy['componentes'] if c['id'] == obj.pk)
         return list(estados_componente_seleccionables(hoy, componente))
@@ -436,7 +469,11 @@ class ServicioResumenAdministrativoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Servicio
-        fields = ['id', 'codigo', 'cliente', 'tipo_servicio', 'estado', 'fecha_solicitud']
+        fields = [
+            'id', 'codigo', 'cliente', 'tipo_servicio', 'estado',
+            'entregar_en_banco', 'avisar_para_coordinar', 'recoger',
+            'fecha_solicitud',
+        ]
 
     def get_cliente(self, obj):
         return {'nombre': obj.cliente.nombre, 'empresa': obj.cliente.empresa}
@@ -483,7 +520,9 @@ class ServicioAdministrativoSerializer(serializers.ModelSerializer):
         if obj.estado in (EstadoServicio.FINALIZADO, EstadoServicio.CANCELADO):
             return []
         hoy = construir_hoy(obj)
-        acciones = []
+        acciones = ['agregar_componente', 'crear_cotizacion']
+        if obj.fecha_recepcion is None:
+            acciones.append('registrar_recepcion')
         if resumen_cierre(hoy)['puede_finalizar']:
             acciones.append('finalizar_servicio')
         if puede_cancelar_servicio(hoy):
@@ -553,6 +592,12 @@ class FinalizarServicioInputSerializer(serializers.Serializer):
     comentario = serializers.CharField(required=False, allow_blank=True, default='')
 
 
+class RegistrarRecepcionInputSerializer(serializers.Serializer):
+    """Comentario opcional de la recepción del servicio."""
+
+    comentario = serializers.CharField(required=False, allow_blank=True, default='')
+
+
 # ─────────────────────────────────────────────────────────────
 # Serializers públicos (solo lo autorizado al cliente)
 # ─────────────────────────────────────────────────────────────
@@ -573,12 +618,37 @@ class FotografiaPublicoSerializer(serializers.ModelSerializer):
         fields = ['url', 'descripcion', 'tipo', 'fecha']
 
 
+class HistorialComponentePublicoSerializer(serializers.ModelSerializer):
+    """Comentarios del administrador visibles al cliente.
+
+    El cliente solo ve el estado alcanzado y el comentario escrito al
+    cambiar de estado (RF-SEG). No se expone el usuario interno que realizó
+    el cambio; el serializer administrativo conserva ese dato.
+    """
+
+    estado = serializers.CharField(
+        source='get_estado_nuevo_display', read_only=True
+    )
+    paso_publico = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HistorialComponente
+        fields = ['estado', 'paso_publico', 'comentario', 'fecha']
+        read_only_fields = fields
+
+    def get_paso_publico(self, obj):
+        return paso_publico_componente(obj.estado_nuevo)
+
+
 class ComponentePublicoSerializer(serializers.ModelSerializer):
     """Lo que el cliente ve de un componente.
 
-    Incluye `estado` y `fase` porque el cliente tiene derecho a saber en qué
-    situación está lo que envió (RF-COT-15), y como etiqueta legible: el código
-    interno (`RECHAZADO_BLOQUEANTE`) es de la empresa, no del cliente.
+    Incluye `estado` real como etiqueta legible (RF-COT-15): el código interno
+    es de la empresa, no del cliente. No incluye `fase`: es un dato interno de
+    trabajo que puede quedar desactualizado respecto al estado real.
+
+    Incluye `historial`: los cambios de estado con el comentario que dejó el
+    administrador, para que el cliente pueda consultarlos al tocar cada paso.
 
     NO incluye los campos de control interno: `trabajo_iniciado`,
     `fecha_inicio_trabajo`, `fecha_finalizacion`, `motivo_finalizacion`,
@@ -588,15 +658,23 @@ class ComponentePublicoSerializer(serializers.ModelSerializer):
     """
 
     estado = serializers.CharField(source='get_estado_display', read_only=True)
-    fase = serializers.CharField(source='get_fase_display', read_only=True)
+    paso_publico = serializers.SerializerMethodField()
+    historial = serializers.SerializerMethodField()
 
     class Meta:
         model = Componente
         fields = [
             'id', 'servicio', 'tipo', 'marca', 'referencia', 'descripcion',
-            'cantidad', 'estado', 'fase',
+            'cantidad', 'estado', 'paso_publico', 'historial',
         ]
         read_only_fields = fields
+
+    def get_paso_publico(self, obj):
+        return paso_publico_componente(obj.estado)
+
+    def get_historial(self, obj):
+        qs = obj.historial.exclude(comentario='').order_by('fecha')
+        return HistorialComponentePublicoSerializer(qs, many=True).data
 
 
 class CotizacionPublicoSerializer(serializers.ModelSerializer):
@@ -607,7 +685,7 @@ class CotizacionPublicoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cotizacion
-        fields = ['numero', 'tipo', 'descripcion', 'estado', 'total', 'detalles']
+        fields = ['id', 'numero', 'tipo', 'descripcion', 'estado', 'total', 'detalles']
 
     def get_total(self, obj):
         return str(obj.total)
@@ -620,15 +698,19 @@ class ServicioPublicoSerializer(serializers.ModelSerializer):
     historial = serializers.SerializerMethodField()
     fotografias = serializers.SerializerMethodField()
     cotizaciones_pendientes = serializers.SerializerMethodField()
+    cancelado = serializers.SerializerMethodField()
 
     class Meta:
         model = Servicio
         fields = [
-            'codigo', 'tipo_servicio', 'estado', 'descripcion_solicitud',
+            'codigo', 'tipo_servicio', 'estado', 'cancelado', 'descripcion_solicitud',
             'fecha_solicitud', 'fecha_recepcion', 'fecha_finalizacion',
             'fecha_entrega', 'componentes', 'historial', 'fotografias',
             'cotizaciones_pendientes',
         ]
+
+    def get_cancelado(self, obj):
+        return obj.estado == EstadoServicio.CANCELADO
 
     def get_historial(self, obj):
         qs = obj.historial.filter(visible_cliente=True)
@@ -639,6 +721,8 @@ class ServicioPublicoSerializer(serializers.ModelSerializer):
         return FotografiaPublicoSerializer(qs, many=True).data
 
     def get_cotizaciones_pendientes(self, obj):
+        if obj.estado == EstadoServicio.CANCELADO:
+            return []
         qs = obj.cotizaciones.filter(estado=EstadoCotizacion.PENDIENTE)
         return CotizacionPublicoSerializer(qs, many=True).data
 class ComponenteSolicitudPublicaSerializer(serializers.Serializer):
@@ -681,7 +765,15 @@ class SolicitudPublicaSerializer(serializers.Serializer):
     empresa = serializers.CharField(max_length=200, required=False, allow_blank=True, default='')
     correo_electronico = serializers.EmailField(max_length=254)
     telefono = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')
-    whatsapp = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')
+    whatsapp = serializers.CharField(
+        max_length=50,
+        required=True,
+        allow_blank=False,
+        error_messages={
+            'required': 'Indica tu número de WhatsApp. Lo usaremos para avisarte del avance de tu servicio.',
+            'blank': 'Indica tu número de WhatsApp. Lo usaremos para avisarte del avance de tu servicio.',
+        },
+    )
     descripcion_problema = serializers.CharField(max_length=500)
     entregar_en_banco = serializers.BooleanField(required=False, default=False)
     avisar_para_coordinar = serializers.BooleanField(required=False, default=False)
@@ -712,12 +804,12 @@ class SolicitudPublicaSerializer(serializers.Serializer):
 
     def validate_whatsapp(self, value):
         from . import validators
-        return validators.normalizar_telefono(value) if value else ''
+        numero = validators.validar_celular_colombiano(value)
+        if numero is None:
+            raise serializers.ValidationError(
+                'Escribe un celular colombiano de 10 dígitos que empiece por 3.'
+            )
+        return numero
 
     def validate(self, attrs):
-        if not attrs.get('telefono') and not attrs.get('whatsapp'):
-            raise serializers.ValidationError({
-                'telefono': ['Indica un teléfono o un WhatsApp para poder contactarte.'],
-            })
-
         return attrs
