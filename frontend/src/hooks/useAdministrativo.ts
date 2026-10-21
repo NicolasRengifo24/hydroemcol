@@ -21,10 +21,12 @@ import {
   eliminarFotografia,
   finalizarServicio,
   listarServiciosAdministrativos,
+  obtenerMensajesWhatsapp,
   obtenerDashboardAdministrativo,
   obtenerServicioAdministrativo,
   reenviarCotizacion,
   registrarAprobacionExterna,
+  registrarRecepcion,
   responderCotizacion,
   type AccionCambiarEstadoComponente,
   type DatosAprobacionExterna,
@@ -52,6 +54,14 @@ export function useServicioAdministrativo(id: number) {
   return useQuery({
     queryKey: clavesAdministrativas.servicio(id),
     queryFn: () => obtenerServicioAdministrativo(id),
+    enabled: Number.isInteger(id) && id > 0,
+  })
+}
+
+export function useMensajesWhatsapp(id: number) {
+  return useQuery({
+    queryKey: clavesAdministrativas.servicio.whatsapp(id),
+    queryFn: () => obtenerMensajesWhatsapp(id),
     enabled: Number.isInteger(id) && id > 0,
   })
 }
@@ -99,6 +109,7 @@ export function useMutacionesAdministrativas(servicioId: number) {
     eliminarComponente: useMutation({ mutationFn: (id: number) => eliminarComponente(servicioId, id), ...opciones() }),
     responderCotizacion: useMutation({ mutationFn: ({ componenteId, datos }: { componenteId: number; datos: RespuestaCotizacion }) => responderCotizacion(servicioId, componenteId, datos), ...opciones() }),
     finalizarServicio: useMutation({ mutationFn: (comentario?: string) => finalizarServicio(servicioId, comentario), ...opciones() }),
+    registrarRecepcion: useMutation({ mutationFn: (comentario?: string) => registrarRecepcion(servicioId, comentario), ...opciones() }),
     cancelarServicio: useMutation({ mutationFn: (comentario: string) => cancelarServicio(servicioId, comentario), ...opciones() }),
     cambiarEstadoComponente: useMutation({
       mutationFn: ({ componenteId, datos }: { componenteId: number; datos: AccionCambiarEstadoComponente }) =>

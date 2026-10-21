@@ -214,7 +214,7 @@ function SolicitarServicio() {
       empresa: form.empresa.trim() || undefined,
       correo_electronico: form.correo_electronico,
       telefono: form.telefono.trim() || undefined,
-      whatsapp: form.whatsapp.trim() || undefined,
+      whatsapp: form.whatsapp.trim(),
       descripcion_problema: form.descripcion_problema,
       entregar_en_banco: preferencias.entregar_en_banco,
       avisar_para_coordinar: preferencias.avisar_para_coordinar,
@@ -451,6 +451,7 @@ function SolicitarServicio() {
                   type="tel"
                   inputMode="tel"
                   maxLength={50}
+                  required
                   aria-invalid={errorCampos.whatsapp ? 'true' : undefined}
                   aria-describedby={errorCampos.whatsapp ? 'f-whatsapp-error' : 'f-contacto-ayuda'}
                   value={form.whatsapp}
@@ -464,7 +465,7 @@ function SolicitarServicio() {
               </div>
 
               <p id="f-contacto-ayuda" className="solicitud-ayuda solicitud-grid-full">
-                Indica al menos un teléfono o un WhatsApp para que podamos contactarte.
+                Indica tu número de WhatsApp. Lo usaremos para avisarte del avance de tu servicio.
               </p>
             </div>
           </fieldset>

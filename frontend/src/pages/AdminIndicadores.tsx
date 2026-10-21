@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useDashboardAdministrativo } from "../hooks/useAdministrativo";
 import type { CodigoEstadoServicio } from "../services/api";
+import { mensajeDeError } from "../services/errores";
 
 const estados: Array<{ codigo: CodigoEstadoServicio; etiqueta: string }> = [
   { codigo: "SOLICITADO", etiqueta: "Solicitados" },
@@ -10,11 +11,7 @@ const estados: Array<{ codigo: CodigoEstadoServicio; etiqueta: string }> = [
 ];
 
 function errorLegible(error: unknown) {
-  if (typeof error === "object" && error !== null && "data" in error) {
-    const data = (error as { data?: { detail?: string } }).data;
-    if (data?.detail) return data.detail;
-  }
-  return "No se pudieron cargar los indicadores operativos.";
+  return mensajeDeError(error, "No se pudieron cargar los indicadores operativos.");
 }
 
 function GraficaEstados({

@@ -14,7 +14,7 @@ export interface SolicitudPublicaPayload {
   empresa?: string
   correo_electronico: string
   telefono?: string
-  whatsapp?: string
+  whatsapp: string
   descripcion_problema: string
   entregar_en_banco?: boolean
   avisar_para_coordinar?: boolean
@@ -50,7 +50,7 @@ export function construirFormDataSolicitud(
   if (payload.empresa) fd.append('empresa', payload.empresa)
   fd.append('correo_electronico', payload.correo_electronico)
   if (payload.telefono) fd.append('telefono', payload.telefono)
-  if (payload.whatsapp) fd.append('whatsapp', payload.whatsapp)
+  fd.append('whatsapp', payload.whatsapp)
   fd.append('descripcion_problema', payload.descripcion_problema)
   fd.append('entregar_en_banco', payload.entregar_en_banco ? 'true' : 'false')
   fd.append('avisar_para_coordinar', payload.avisar_para_coordinar ? 'true' : 'false')

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useDashboardAdministrativo } from "../hooks/useAdministrativo";
 import type { ServicioResumenAdministrativo } from "../services/api";
+import { mensajeDeError } from "../services/errores";
 
 function fechaLegible(fecha: string) {
   return new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(
@@ -9,11 +10,16 @@ function fechaLegible(fecha: string) {
 }
 
 function errorLegible(error: unknown) {
-  if (typeof error === "object" && error !== null && "data" in error) {
-    const data = (error as { data?: { detail?: string } }).data;
-    if (data?.detail) return data.detail;
-  }
-  return "No se pudo cargar el resumen operativo.";
+  return mensajeDeError(error, "No se pudo cargar el resumen operativo.");
+}
+
+function preferenciaEntrega(servicio: ServicioResumenAdministrativo) {
+  const preferencias = [
+    servicio.entregar_en_banco && "Entregar en banco",
+    servicio.avisar_para_coordinar && "Coordinar entrega",
+    servicio.recoger && "Recoger componente",
+  ].filter(Boolean);
+  return preferencias.length ? preferencias.join(" · ") : "Sin preferencia indicada";
 }
 
 function ServicioResumen({
@@ -28,6 +34,9 @@ function ServicioResumen({
         <small>
           {servicio.cliente.nombre}
           {servicio.cliente.empresa ? ` · ${servicio.cliente.empresa}` : ""}
+        </small>
+        <small className="admin-list-item__delivery">
+          Entrega: {preferenciaEntrega(servicio)}
         </small>
       </span>
       <span className="admin-list-item__meta">
@@ -75,6 +84,37 @@ function Admin() {
       )}
       {consulta.isSuccess && (
         <>
+          <section className="admin-overview" aria-labelledby="lectura-titulo">
+            <div className="admin-section-heading">
+              <div>
+                <p className="admin-kicker">Lectura rápida</p>
+                <h2 id="lectura-titulo">Estado de la operación</h2>
+              </div>
+              <span className="admin-section-note">Datos en tiempo real</span>
+            </div>
+            <div className="admin-metrics admin-metrics--overview">
+              <Link className="admin-metric admin-metric--total" to="/admin/servicios">
+                <span>Servicios activos</span>
+                <strong>{consulta.data.total_activos}</strong>
+                <small>Ver cartera completa</small>
+              </Link>
+              <Link className="admin-metric" to="/admin/servicios?estado=SOLICITADO">
+                <span>Nuevas solicitudes</span>
+                <strong>{consulta.data.contadores.SOLICITADO ?? 0}</strong>
+                <small>Requieren primera revisión</small>
+              </Link>
+              <Link className="admin-metric" to="/admin/servicios?estado=EN_CURSO">
+                <span>En curso</span>
+                <strong>{consulta.data.contadores.EN_CURSO ?? 0}</strong>
+                <small>Atención actualmente activa</small>
+              </Link>
+              <Link className="admin-metric admin-metric--attention" to="/admin/servicios">
+                <span>Prioridad de atención</span>
+                <strong>{consulta.data.pendientes_atencion.length}</strong>
+                <small>Casos que necesitan seguimiento</small>
+              </Link>
+            </div>
+          </section>
           <div className="admin-dashboard-grid">
             <section className="admin-panel" aria-labelledby="recientes-titulo">
               <div className="admin-section-heading">

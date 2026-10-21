@@ -356,6 +356,7 @@ export interface CotizacionAdministrativa {
   detalles: DetalleCotizacion[]
   aprobaciones: AprobacionServicio[]
   reemplaza_a: number | null
+  acciones_disponibles: string[]
   versiones: number[]
 }
 
@@ -401,6 +402,9 @@ export interface ServicioResumenAdministrativo {
   cliente: { nombre: string; empresa: string }
   tipo_servicio: string
   estado: string
+  entregar_en_banco: boolean
+  avisar_para_coordinar: boolean
+  recoger: boolean
   fecha_solicitud: string
 }
 
@@ -437,6 +441,24 @@ export interface ServicioAdministrativo extends ServicioResumenAdministrativo {
   seguimiento: SeguimientoAdministrativo
 }
 
+export interface MensajeWhatsApp {
+  clave: string
+  ambito: 'SERVICIO' | 'COMPONENTE'
+  etiqueta: string
+  estado: string
+  etiqueta_estado: string
+  texto: string | null
+  aviso: string | null
+}
+
+export interface RespuestaWhatsApp {
+  codigo: string
+  abierto: boolean
+  numero_destino: string | null
+  aviso: string | null
+  mensajes: MensajeWhatsApp[]
+}
+
 export interface DashboardAdministrativo {
   total_activos: number
   contadores: Partial<Record<CodigoEstadoServicio, number>> & Record<string, number>
@@ -450,7 +472,7 @@ export interface ListadoServiciosAdministrativo {
   next: string | null
   previous: string | null
   page: number
-  page_size: 20
+  page_size: 10
   results: ServicioResumenAdministrativo[]
 }
 
@@ -519,6 +541,19 @@ export interface RespuestaCotizacion {
   observacion?: string
 }
 
+export type PasoPublico =
+  | 'Recibido'
+  | 'Revisión y cotización'
+  | 'Pruebas'
+  | 'Finalizado'
+
+export interface HistorialComponenteSeguimiento {
+  estado: string
+  paso_publico: PasoPublico
+  comentario: string
+  fecha: string
+}
+
 export interface ComponenteSeguimiento {
   id: number
   servicio: number
@@ -528,10 +563,12 @@ export interface ComponenteSeguimiento {
   descripcion: string
   cantidad: number
   estado: string
-  fase: string
+  paso_publico: PasoPublico
+  historial: HistorialComponenteSeguimiento[]
 }
 
 export interface CotizacionSeguimiento {
+  id: number
   numero: string
   tipo: string
   descripcion: string
@@ -557,6 +594,7 @@ export interface ServicioSeguimiento {
   codigo: string
   tipo_servicio: string
   estado: string
+  cancelado: boolean
   descripcion_solicitud: string
   fecha_solicitud: string
   fecha_recepcion: string | null
@@ -568,6 +606,12 @@ export interface ServicioSeguimiento {
   cotizaciones_pendientes: CotizacionSeguimiento[]
 }
 
+function claveServicio(id: number) {
+  return [...clavesAdministrativas.todas, 'servicio', id] as const
+}
+
+claveServicio.whatsapp = (id: number) => [...claveServicio(id), 'whatsapp'] as const
+
 export const clavesAdministrativas = {
   todas: ['administrativo'] as const,
   dashboard: () => [...clavesAdministrativas.todas, 'dashboard'] as const,
@@ -578,7 +622,7 @@ export const clavesAdministrativas = {
       page: parametros.page ?? 1,
       ordering: parametros.ordering ?? '-fecha_solicitud',
     }] as const,
-  servicio: (id: number) => [...clavesAdministrativas.todas, 'servicio', id] as const,
+  servicio: claveServicio,
 }
 
 function construirQuery(parametros: ParametrosListadoServicios): string {
@@ -599,6 +643,9 @@ export const listarServiciosAdministrativos = (parametros: ParametrosListadoServ
 
 export const obtenerServicioAdministrativo = (id: number) =>
   apiRequest<ServicioAdministrativo>(`/api/servicios/${id}/`)
+
+export const obtenerMensajesWhatsapp = (servicioId: number) =>
+  apiRequest<RespuestaWhatsApp>(`/api/servicios/${servicioId}/whatsapp/`)
 
 async function enviar<T>(endpoint: string, method: string, body?: unknown): Promise<T> {
   return apiRequest<T>(endpoint, { method, body: body === undefined ? undefined : JSON.stringify(body) })
@@ -624,6 +671,9 @@ export const finalizarServicio = (servicioId: number, comentario?: string) =>
 
 export const cancelarServicio = (servicioId: number, comentario: string) =>
   enviar<ServicioAdministrativo>(`/api/servicios/${servicioId}/cancelar/`, 'POST', { comentario })
+
+export const registrarRecepcion = (servicioId: number, comentario?: string) =>
+  enviar<ServicioAdministrativo>(`/api/servicios/${servicioId}/recepcion/`, 'POST', comentario ? { comentario } : {})
 
 export const cambiarEstadoComponente = (
   servicioId: number,
@@ -653,10 +703,12 @@ export const obtenerSeguimiento = (token: string) =>
 
 export const responderSeguimiento = (
   token: string,
+  cotizacionId: number,
   resultado: ResultadoAprobacion,
   observacion = '',
 ) =>
   enviar<AprobacionServicio>(`/api/seguimiento/${encodeURIComponent(token)}/aprobar/`, 'POST', {
+    cotizacion_id: cotizacionId,
     resultado,
     observacion,
   })

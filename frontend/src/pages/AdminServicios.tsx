@@ -2,6 +2,7 @@ import type { FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useServiciosAdministrativos } from '../hooks/useAdministrativo'
 import type { CodigoEstadoServicio, ParametrosListadoServicios, ServicioResumenAdministrativo } from '../services/api'
+import { mensajeDeError } from '../services/errores'
 
 const estados: Array<{ codigo: CodigoEstadoServicio; etiqueta: string }> = [
   { codigo: 'SOLICITADO', etiqueta: 'Solicitado' },
@@ -28,11 +29,16 @@ function fechaLegible(fecha: string) {
 }
 
 function errorLegible(error: unknown) {
-  if (typeof error === 'object' && error !== null && 'data' in error) {
-    const data = (error as { data?: { detail?: string } }).data
-    if (data?.detail) return data.detail
-  }
-  return 'No se pudo cargar el listado de servicios.'
+  return mensajeDeError(error, 'No se pudo cargar el listado de servicios.')
+}
+
+function preferenciaEntrega(servicio: ServicioResumenAdministrativo) {
+  const preferencias = [
+    servicio.entregar_en_banco && 'Entregar en banco',
+    servicio.avisar_para_coordinar && 'Coordinar entrega',
+    servicio.recoger && 'Recoger componente',
+  ].filter(Boolean)
+  return preferencias.length ? preferencias.join(' · ') : 'Sin preferencia indicada'
 }
 
 function ServicioCard({ servicio }: { servicio: ServicioResumenAdministrativo }) {
@@ -46,6 +52,7 @@ function ServicioCard({ servicio }: { servicio: ServicioResumenAdministrativo })
         <div><dt>Cliente</dt><dd>{servicio.cliente.nombre}</dd></div>
         <div><dt>Empresa</dt><dd>{servicio.cliente.empresa || 'Particular'}</dd></div>
         <div><dt>Servicio</dt><dd>{servicio.tipo_servicio}</dd></div>
+        <div><dt>Preferencia de entrega</dt><dd>{preferenciaEntrega(servicio)}</dd></div>
         <div><dt>Solicitud</dt><dd>{fechaLegible(servicio.fecha_solicitud)}</dd></div>
       </dl>
     </article>
@@ -90,7 +97,7 @@ function AdminServicios() {
           <h1 id="servicios-titulo">Servicios</h1>
           <p className="admin-lead">Busca y prioriza las solicitudes activas de Hidroemcol.</p>
         </div>
-        <span className="admin-page__context">20 registros por página</span>
+        <span className="admin-page__context">10 registros por página</span>
       </div>
 
       <form className="admin-filters" onSubmit={buscar}>
@@ -124,8 +131,8 @@ function AdminServicios() {
           <div className="admin-table-wrap">
             <table className="admin-table">
               <caption className="sr-only">Servicios activos</caption>
-              <thead><tr><th scope="col">Código</th><th scope="col">Cliente / empresa</th><th scope="col">Servicio</th><th scope="col">Estado</th><th scope="col">Solicitud</th></tr></thead>
-<tbody>{consulta.data.results.map((servicio) => <tr key={servicio.id}><th scope="row"><Link to={`/admin/servicios/${servicio.id}`}>{servicio.codigo}</Link></th><td>{servicio.cliente.nombre}<small>{servicio.cliente.empresa || 'Particular'}</small></td><td>{servicio.tipo_servicio}</td><td><span className="admin-status">{servicio.estado}</span></td><td>{fechaLegible(servicio.fecha_solicitud)}</td></tr>)}</tbody>
+              <thead><tr><th scope="col">Código</th><th scope="col">Cliente / empresa</th><th scope="col">Servicio</th><th scope="col">Entrega</th><th scope="col">Estado</th><th scope="col">Solicitud</th></tr></thead>
+<tbody>{consulta.data.results.map((servicio) => <tr key={servicio.id}><th scope="row"><Link to={`/admin/servicios/${servicio.id}`}>{servicio.codigo}</Link></th><td>{servicio.cliente.nombre}<small>{servicio.cliente.empresa || 'Particular'}</small></td><td>{servicio.tipo_servicio}</td><td>{preferenciaEntrega(servicio)}</td><td><span className="admin-status">{servicio.estado}</span></td><td>{fechaLegible(servicio.fecha_solicitud)}</td></tr>)}</tbody>
             </table>
           </div>
           <div className="admin-cards" aria-label="Servicios activos en tarjetas">{consulta.data.results.map((servicio) => <ServicioCard key={servicio.id} servicio={servicio} />)}</div>

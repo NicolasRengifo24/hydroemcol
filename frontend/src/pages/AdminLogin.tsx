@@ -1,8 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { iniciarSesion } from "../services/api";
 import Logo from "../components/brand/Logo";
+
+const AVISO_SESION =
+  "Tu sesión ha caducado. Vuelve a entrar: tu mensaje seguirá en el campo.";
+
+type EstadoInicioSesion = { from?: unknown; aviso?: unknown };
+
+function estadoInicioSesion(valor: unknown): EstadoInicioSesion | null {
+  return typeof valor === "object" && valor !== null
+    ? (valor as EstadoInicioSesion)
+    : null;
+}
 
 function esErrorDeAutenticacion(error: unknown): boolean {
   return (
@@ -28,10 +39,25 @@ function rutaDeRetornoSegura(valor: unknown): string {
 function AdminLogin() {
   const navigate = useNavigate();
   const location = useLocation();
+  const estado = estadoInicioSesion(location.state);
+  const [avisoSesion] = useState(
+    () => (estado?.aviso === AVISO_SESION ? AVISO_SESION : null),
+  );
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    if (estado?.aviso !== AVISO_SESION) return;
+
+    // El aviso ya quedó en el estado local; se elimina del router sin perder
+    // el destino protegido para conservar el flujo de inicio de sesión.
+    navigate(`${location.pathname}${location.search}${location.hash}`, {
+      replace: true,
+      state: estado.from === undefined ? null : { from: estado.from },
+    });
+  }, [estado, location.hash, location.pathname, location.search, navigate]);
 
   async function manejarEnvio(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -68,6 +94,12 @@ function AdminLogin() {
             servicios.
           </p>
         </div>
+
+        {avisoSesion && (
+          <p className="login-form__error" role="alert">
+            {avisoSesion}
+          </p>
+        )}
 
         <form className="login-form" onSubmit={manejarEnvio}>
           <div className="login-form__campo">
