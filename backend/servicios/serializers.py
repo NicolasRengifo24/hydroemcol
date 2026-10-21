@@ -8,6 +8,7 @@ from .estados import (
     EstadoComponente,
     paso_publico_componente,
 )
+from .almacenamiento import url_fotografia
 from .models import (
     AprobacionServicio,
     Cliente,
@@ -159,7 +160,16 @@ class HistorialServicioSerializer(serializers.ModelSerializer):
         return obj.usuario.username if obj.usuario else None
 
 
-class FotografiaSerializer(serializers.ModelSerializer):
+class FotografiaUrlSerializerMixin:
+    """Entrega URLs firmadas para referencias privadas de R2."""
+
+    def to_representation(self, instance):
+        representacion = super().to_representation(instance)
+        representacion['url'] = url_fotografia(instance.url)
+        return representacion
+
+
+class FotografiaSerializer(FotografiaUrlSerializerMixin, serializers.ModelSerializer):
     fecha = serializers.DateTimeField(read_only=True)
     subida_por = serializers.SerializerMethodField()
 
@@ -338,7 +348,7 @@ class RegistroTecnicoInputSerializer(serializers.ModelSerializer):
         fields = ['diagnostico', 'trabajo_realizado', 'resultado_pruebas', 'recomendaciones', 'observaciones']
 
 
-class FotografiaAdministrativaSerializer(serializers.ModelSerializer):
+class FotografiaAdministrativaSerializer(FotografiaUrlSerializerMixin, serializers.ModelSerializer):
     url = serializers.URLField(required=False, allow_blank=True)
     fecha = serializers.DateTimeField(read_only=True)
     subida_por = serializers.SerializerMethodField(read_only=True)
@@ -610,7 +620,7 @@ class HistorialPublicoSerializer(serializers.ModelSerializer):
         fields = ['estado', 'comentario', 'fecha']
 
 
-class FotografiaPublicoSerializer(serializers.ModelSerializer):
+class FotografiaPublicoSerializer(FotografiaUrlSerializerMixin, serializers.ModelSerializer):
     tipo = serializers.CharField(source='get_tipo_display', read_only=True)
 
     class Meta:

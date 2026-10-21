@@ -177,6 +177,44 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 
+# Cloudflare R2 privado. Se activa solo cuando el entorno de despliegue lo
+# solicita; el desarrollo local conserva el almacenamiento de Django.
+R2_ENABLED = _variable_boolean('R2_ENABLED', False)
+if R2_ENABLED:
+    _r2_requeridas = {
+        'R2_ACCESS_KEY_ID': os.getenv('R2_ACCESS_KEY_ID'),
+        'R2_SECRET_ACCESS_KEY': os.getenv('R2_SECRET_ACCESS_KEY'),
+        'R2_BUCKET_NAME': os.getenv('R2_BUCKET_NAME'),
+        'R2_ENDPOINT_URL': os.getenv('R2_ENDPOINT_URL'),
+    }
+    faltantes_r2 = [nombre for nombre, valor in _r2_requeridas.items() if not valor]
+    if faltantes_r2:
+        raise ImproperlyConfigured(
+            'Faltan variables de Cloudflare R2: ' + ', '.join(faltantes_r2)
+        )
+
+    R2_REFERENCE_PREFIX = 'r2://'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3.S3Storage',
+        },
+        'staticfiles': {
+            'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+        },
+    }
+    AWS_ACCESS_KEY_ID = _r2_requeridas['R2_ACCESS_KEY_ID']
+    AWS_SECRET_ACCESS_KEY = _r2_requeridas['R2_SECRET_ACCESS_KEY']
+    AWS_STORAGE_BUCKET_NAME = _r2_requeridas['R2_BUCKET_NAME']
+    AWS_S3_ENDPOINT_URL = _r2_requeridas['R2_ENDPOINT_URL']
+    AWS_S3_REGION_NAME = 'auto'
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+    AWS_S3_ADDRESSING_STYLE = 'path'
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = True
+    AWS_QUERYSTRING_EXPIRE = int(os.getenv('R2_URL_EXPIRATION_SECONDS', '900'))
+
+
 # JWT: el access vive 15 minutos y el refresh un día. La vista de autenticación
 # usará las opciones de cookie de abajo; el refresh nunca se devuelve en JSON.
 SIMPLE_JWT = {

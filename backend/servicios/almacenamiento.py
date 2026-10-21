@@ -4,9 +4,8 @@ Es el **único** punto del proyecto que habla con el almacenamiento. Hoy usa el
 almacenamiento local de Django (`default_storage` sobre `MEDIA_ROOT`) y guarda
 en `Fotografia.url` una referencia `/media/...`.
 
-La migración futura a Cloudflare (plan D-1) es un cambio de este módulo: la
-vista, el serializer y el contrato (`Fotografia.url` sigue siendo `URLField`)
-no se tocan.
+En producción puede usar Cloudflare R2 privado. La base de datos conserva una
+referencia `r2://...` y las URLs firmadas se generan al serializar.
 """
 
 from __future__ import annotations
@@ -49,11 +48,28 @@ def guardar_fotografia(archivo):
     """Guarda un archivo y devuelve su referencia, sin conocer el proveedor."""
     nombre = f'fotografias/{uuid.uuid4().hex}_{Path(archivo.name).name}'
     nombre_guardado = default_storage.save(nombre, archivo)
+    if getattr(settings, 'R2_ENABLED', False):
+        return f'{settings.R2_REFERENCE_PREFIX}{nombre_guardado}'
     return f'{settings.MEDIA_URL}{nombre_guardado}'
 
 
+def url_fotografia(referencia):
+    """Genera una URL temporal para una referencia privada de R2."""
+    if not getattr(settings, 'R2_ENABLED', False):
+        return referencia
+    prefijo = getattr(settings, 'R2_REFERENCE_PREFIX', 'r2://')
+    if not referencia or not referencia.startswith(prefijo):
+        return referencia
+    return default_storage.url(referencia[len(prefijo):])
+
+
 def eliminar_referencia(referencia):
-    """Elimina una referencia local; un adaptador futuro puede reemplazar esto."""
+    """Elimina una referencia local o un objeto privado de R2."""
+    if getattr(settings, 'R2_ENABLED', False):
+        prefijo_r2 = getattr(settings, 'R2_REFERENCE_PREFIX', 'r2://')
+        if referencia and referencia.startswith(prefijo_r2):
+            default_storage.delete(referencia[len(prefijo_r2):])
+            return True
     prefijo = str(settings.MEDIA_URL or '')
     nombre = referencia[len(prefijo):] if prefijo and referencia.startswith(prefijo) else referencia
     if not default_storage.exists(nombre):

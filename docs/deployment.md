@@ -12,9 +12,17 @@ Configura estas variables en Render sin subir valores secretos al repositorio:
 - `CSRF_TRUSTED_ORIGINS`: los mismos orígenes HTTPS que pueden enviar formularios al backend.
 - `AUTH_COOKIE_SECURE=True`, `SECURE_SSL_REDIRECT=True` y `TRUST_PROXY_SSL=True`.
 - `AUTH_COOKIE_SAMESITE=Lax` cuando frontend y backend están en el mismo sitio.
+- `R2_ENABLED=True` en producción cuando el bucket privado de Cloudflare R2 esté listo.
+- `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` y `R2_ENDPOINT_URL` para R2.
+- `R2_URL_EXPIRATION_SECONDS` para la duración de las URLs firmadas, por defecto 900 segundos.
 
 No uses `*` con credenciales CORS. `VITE_API_URL` debe apuntar al origen HTTPS del backend
 cuando frontend y backend se despliegan separadamente.
+
+Las referencias de fotografías en R2 se guardan internamente como `r2://...`; las respuestas
+administrativas y públicas generan una URL firmada temporalmente. No se deben guardar URLs
+firmadas en la base de datos porque expiran. Para este flujo privado se usa el endpoint S3 de
+R2; no se configura `AWS_S3_CUSTOM_DOMAIN` para las URLs firmadas.
 
 ## HTTPS y proxy
 
