@@ -19,6 +19,38 @@ Configura estas variables en Render sin subir valores secretos al repositorio:
 No uses `*` con credenciales CORS. `VITE_API_URL` debe apuntar al origen HTTPS del backend
 cuando frontend y backend se despliegan separadamente.
 
+## Usuario administrativo en Render
+
+El plan gratuito de Render no ofrece shell, así que el usuario administrativo se crea con el
+comando de gestión `usuarios/crear_usuario_admin.py` durante el build:
+
+```env
+HIDROEMCOL_ADMIN_USERNAME=user
+HIDROEMCOL_ADMIN_PASSWORD=<contraseña>
+HIDROEMCOL_ADMIN_EMAIL=admin@hydroemcol.com
+```
+
+Y el comando de build queda así:
+
+```bash
+pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py crear_usuario_admin
+```
+
+El comando es idempotente: si el usuario ya existe solo verifica su rol y que siga activo, y
+no vuelve a fijar la contraseña salvo que se ejecute con `--actualizar-clave`. La contraseña
+solo es obligatoria la primera vez; después de verificar el acceso se puede retirar
+`HIDROEMCOL_ADMIN_PASSWORD` del entorno. Si el usuario se borrara, el comando fallaría sin esa
+variable: en ese caso quita también el comando del build.
+
+## Fotografías: fallos de almacenamiento
+
+Si el almacenamiento no puede guardar una fotografía, la solicitud pública responde `503` con
+un mensaje accionable y la transacción se revierte: no queda una solicitud a medias. El detalle
+del proveedor (por ejemplo `AccessDenied` o `SignatureDoesNotMatch`) queda solo en el log del
+servidor, en la línea `Fallo al guardar la fotografía en el almacenamiento`. Con `DEBUG=False`
+el handler `console` de Django no escribe, por eso el proyecto registra esa línea y las
+excepciones no controladas en `django.request` con su propio handler de consola.
+
 Las referencias de fotografías en R2 se guardan internamente como `r2://...`; las respuestas
 administrativas y públicas generan una URL firmada temporalmente. No se deben guardar URLs
 firmadas en la base de datos porque expiran. Para este flujo privado se usa el endpoint S3 de

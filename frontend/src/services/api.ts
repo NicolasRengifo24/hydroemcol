@@ -68,6 +68,11 @@ function esErrorApi(error: unknown): error is ErrorApi {
   return error instanceof Error && typeof (error as Partial<ErrorApi>).status === 'number'
 }
 
+// Mensaje para respuestas del servidor que no son JSON (p. ej. la página de
+// error de Django). El contenido original no se muestra al usuario.
+const MENSAJE_SERVIDOR_NO_DISPONIBLE =
+  'El servidor no pudo completar la operación. Inténtalo de nuevo en unos minutos.'
+
 function limpiarSesion(): void {
   accessToken = null
   cambiarEstadoSesion('anonima')
@@ -227,7 +232,10 @@ export async function apiRequest<T = unknown>(
     try {
       data = texto ? JSON.parse(texto) : {}
     } catch {
-      data = { detail: texto }
+      // El servidor devolvió algo que no es JSON (por ejemplo la página de
+      // error 500 de Django). Ese contenido no se muestra al usuario: se
+      // reemplaza por un mensaje entendible.
+      data = { detail: MENSAJE_SERVIDOR_NO_DISPONIBLE }
     }
     const error = new Error('API error') as ErrorApi
     error.status = res.status

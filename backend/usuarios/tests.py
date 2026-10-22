@@ -1,9 +1,14 @@
 """Contrato y seguridad de la autenticación administrativa (spec 004)."""
 
 from datetime import timedelta
+from io import StringIO
 import logging
+import os
+from unittest import mock
 
 from django.core.cache import cache
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 
@@ -307,3 +312,57 @@ class AutenticacionContratoTests(TestCase):
             REMOTE_ADDR=self.ip,
         )
         self.assertEqual(autorizada.status_code, 200)
+
+
+class CrearUsuarioAdminCommandTests(TestCase):
+    """El comando de despliegue crea el usuario administrativo de forma
+    idempotente y nunca deja la contraseña en la salida."""
+
+    entorno = {
+        'HIDROEMCOL_ADMIN_USERNAME': 'user',
+        'HIDROEMCOL_ADMIN_PASSWORD': 'Clave-de-prueba-123',
+        'HIDROEMCOL_ADMIN_EMAIL': 'admin@hydroemcol.com',
+    }
+
+    def test_crea_usuario_administrativo(self):
+        with mock.patch.dict(os.environ, self.entorno):
+            call_command('crear_usuario_admin', stdout=StringIO())
+
+        usuario = Usuario.objects.get(username='user')
+        self.assertEqual(usuario.rol, Usuario.Roles.ADMINISTRATIVO)
+        self.assertTrue(usuario.is_active)
+        self.assertTrue(usuario.is_staff)
+        self.assertTrue(usuario.check_password('Clave-de-prueba-123'))
+
+    def test_es_idempotente_no_crea_duplicados(self):
+        with mock.patch.dict(os.environ, self.entorno):
+            call_command('crear_usuario_admin', stdout=StringIO())
+            call_command('crear_usuario_admin', stdout=StringIO())
+
+        self.assertEqual(Usuario.objects.filter(username='user').count(), 1)
+
+    def test_actualizar_clave_opcional(self):
+        with mock.patch.dict(os.environ, self.entorno):
+            call_command('crear_usuario_admin', stdout=StringIO())
+        with mock.patch.dict(os.environ, self.entorno):
+            call_command('crear_usuario_admin', '--actualizar-clave', stdout=StringIO())
+
+        self.assertTrue(
+            Usuario.objects.get(username='user').check_password('Clave-de-prueba-123')
+        )
+
+    def test_sin_contraseña_no_crea_usuario(self):
+        entorno = dict(self.entorno)
+        entorno['HIDROEMCOL_ADMIN_PASSWORD'] = ''
+        with mock.patch.dict(os.environ, entorno):
+            with self.assertRaises(CommandError):
+                call_command('crear_usuario_admin', stdout=StringIO())
+
+        self.assertFalse(Usuario.objects.filter(username='user').exists())
+
+    def test_no_expone_la_contraseña_en_la_salida(self):
+        salida = StringIO()
+        with mock.patch.dict(os.environ, self.entorno):
+            call_command('crear_usuario_admin', stdout=salida)
+
+        self.assertNotIn('Clave-de-prueba-123', salida.getvalue())
