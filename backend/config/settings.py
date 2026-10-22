@@ -237,6 +237,16 @@ AUTH_COOKIE_SECURE = _variable_boolean('AUTH_COOKIE_SECURE', not DEBUG) or not D
 if AUTH_COOKIE_SAMESITE == 'None' and not AUTH_COOKIE_SECURE:
     raise ImproperlyConfigured('SameSite=None requiere AUTH_COOKIE_SECURE=True.')
 
+# Cookie CSRF. En desarrollo SameSite=Lax; en producción con frontend y backend
+# en orígenes distintos (cross-site) debe ser None + Secure para que se envíe
+# con peticiones POST desde el SPA.
+CSRF_COOKIE_SECURE = _variable_boolean('CSRF_COOKIE_SECURE', not DEBUG) or not DEBUG
+CSRF_COOKIE_SAMESITE = os.getenv('CSRF_COOKIE_SAMESITE', 'Lax').strip()
+if CSRF_COOKIE_SAMESITE not in {'Lax', 'Strict', 'None'}:
+    raise ImproperlyConfigured('CSRF_COOKIE_SAMESITE debe ser Lax, Strict o None.')
+if CSRF_COOKIE_SAMESITE == 'None' and not CSRF_COOKIE_SECURE:
+    raise ImproperlyConfigured('CSRF_COOKIE_SAMESITE=None requiere CSRF_COOKIE_SECURE=True.')
+
 
 # CORS y CSRF solo aceptan orígenes declarados explícitamente. Nunca se combina
 # wildcard con credenciales.
@@ -267,7 +277,7 @@ SECURE_PROXY_SSL_HEADER = None
 if _variable_boolean('TRUST_PROXY_SSL', not DEBUG):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
+
 
 
 # Caché local para límites de autenticación sin introducir Redis. En Render, con
