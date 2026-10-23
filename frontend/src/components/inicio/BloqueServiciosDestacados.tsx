@@ -27,7 +27,7 @@ export function BloqueServiciosDestacados({
       aria-labelledby={id}
     >
       <SeccionEncabezado id={id} nivel={2} titulo="Productos y servicios" />
-      <div className="rejilla rejilla--destacados">
+      <div className="rejilla rejilla--destacados rejilla--bento">
         {servicios.map((servicio, i) => {
           const Icono = ICONOS[i];
           return servicio.titulo === "Importación Sobre Pedido" ? (

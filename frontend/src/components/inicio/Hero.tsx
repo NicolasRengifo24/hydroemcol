@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Cpu, Package, Wrench } from 'lucide-react'
 import { TarjetaServicio } from './TarjetaServicio'
@@ -12,18 +13,37 @@ interface HeroProps {
   ctaTo: string
 }
 
-// Hero de la página de inicio (RF-2): foto de fondo del banco de pruebas, velo de
+// Hero de la página de inicio (RF-2): video de fondo del banco de pruebas, velo de
 // color de marca, mensaje principal, llamada a la acción y tres tarjetas de vidrio.
 export function Hero({ ctaTexto, ctaTo }: HeroProps) {
+  const [reducirMovimiento, setReducirMovimiento] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false,
+  )
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const actualizarPreferencia = (event: MediaQueryListEvent) => {
+      setReducirMovimiento(event.matches)
+    }
+
+    mediaQuery.addEventListener('change', actualizarPreferencia)
+    return () => mediaQuery.removeEventListener('change', actualizarPreferencia)
+  }, [])
+
   return (
     <section className="hero" aria-labelledby="inicio-hero">
-      <img
+      <video
         className="hero__fondo"
-        src="/img/foto-banco-de-prueba-1.jpeg"
-        alt=""
+        src="/vid/video-banco-prueba.mp4"
+        poster="/img/foto-banco-de-prueba-1.jpeg"
+        muted
+        loop
+        playsInline
+        autoPlay={!reducirMovimiento}
+        preload="metadata"
         aria-hidden="true"
-        decoding="async"
-        fetchPriority="high"
       />
       <div className="hero__velo" aria-hidden="true" />
 
