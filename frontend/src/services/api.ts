@@ -89,8 +89,10 @@ export function suscribirseSesion(oyente: OyenteSesion): () => void {
 
 /** Solicita una cookie CSRF y devuelve el valor que debe viajar en el encabezado. */
 export async function obtenerCsrf(): Promise<string> {
-  await apiRequest('/api/csrf/', { method: 'GET' })
-  const csrf = leerCsrfDeCookie()
+  const respuesta = await apiRequest<{ csrfToken?: string }>('/api/csrf/', { method: 'GET' })
+  const csrf = (respuesta && typeof respuesta === 'object' && 'csrfToken' in respuesta && typeof respuesta.csrfToken === 'string')
+    ? respuesta.csrfToken
+    : leerCsrfDeCookie()
   if (!csrf) throw new Error('No se pudo obtener el token CSRF')
   return csrf
 }

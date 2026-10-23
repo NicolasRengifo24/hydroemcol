@@ -127,13 +127,18 @@ def _borrar_refresh(respuesta):
 
 
 class CsrfView(APIView):
-    """Entrega una cookie CSRF legible para que el cliente forme el encabezado."""
+    """Entrega una cookie CSRF legible para que el cliente forme el encabezado.
+
+    Se devuelve también el token en el cuerpo JSON porque, con SameSite=None
+    en orígenes distintos, algunos navegadores no exponen la cookie a
+    document.cookie y el frontend no puede leerla.
+    """
 
     permission_classes = [AllowAny]
 
     def get(self, request):
-        get_token(request)
-        return Response({'detail': 'CSRF listo'}, status=status.HTTP_200_OK)
+        token = get_token(request)
+        return Response({'csrfToken': token, 'detail': 'CSRF listo'}, status=status.HTTP_200_OK)
 
 
 @method_decorator(csrf_protect, name='dispatch')

@@ -67,10 +67,12 @@ class AutenticacionContratoTests(TestCase):
         respuesta = self.cliente.get('/api/csrf/', REMOTE_ADDR=self.ip)
 
         self.assertEqual(respuesta.status_code, 200)
-        self.assertEqual(respuesta.json(), {'detail': 'CSRF listo'})
+        datos = respuesta.json()
+        self.assertIn('detail', datos)
+        self.assertIn('csrfToken', datos)
         self.assertIn('csrftoken', respuesta.cookies)
-        self.assertNotIn('access', respuesta.json())
-        self.assertNotIn('refresh_token', respuesta.json())
+        self.assertNotIn('access', datos)
+        self.assertNotIn('refresh_token', datos)
 
     def test_login_exitoso_solo_entrega_access_y_cookie_refresh(self):
         respuesta = self.iniciar_sesion()
