@@ -582,7 +582,9 @@ export interface CotizacionSeguimiento {
   numero: string
   tipo: string
   descripcion: string
+  observaciones: string
   estado: string
+  es_bloqueante: boolean
   total: string
   detalles: DetalleCotizacion[]
 }

@@ -695,7 +695,10 @@ class CotizacionPublicoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cotizacion
-        fields = ['id', 'numero', 'tipo', 'descripcion', 'estado', 'total', 'detalles']
+        fields = [
+            'id', 'numero', 'tipo', 'descripcion', 'observaciones', 'estado',
+            'es_bloqueante', 'total', 'detalles',
+        ]
 
     def get_total(self, obj):
         return str(obj.total)

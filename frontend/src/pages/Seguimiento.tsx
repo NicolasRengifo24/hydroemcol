@@ -6,6 +6,7 @@ import {
   responderSeguimiento,
   type ErrorApi,
   type ResultadoAprobacion,
+  type ServicioSeguimiento,
 } from "../services/api";
 
 function mensajeDeError(error: unknown): string {
@@ -28,6 +29,15 @@ function fechaVisible(fecha: string | null): string {
   return new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(
     new Date(fecha),
   );
+}
+
+function comentarioDeRecepcion(
+  fechaRecepcion: string | null,
+  historial: ServicioSeguimiento["historial"],
+): string {
+  if (!fechaRecepcion) return "";
+  const inicio = new Date(fechaRecepcion).getTime();
+  return historial.find((registro) => new Date(registro.fecha).getTime() >= inicio)?.comentario || "";
 }
 
 function Seguimiento() {
@@ -173,6 +183,15 @@ function Seguimiento() {
               <dd>{fechaVisible(servicio.fecha_finalizacion)}</dd>
             </div>
           </dl>
+          {servicio.fecha_recepcion && (
+            <div className="seguimiento__recepcion" role="status">
+              <strong>Recepción registrada</strong>
+              <p>
+                {comentarioDeRecepcion(servicio.fecha_recepcion, servicio.historial) ||
+                  "El equipo confirmó la recepción de tu componente."}
+              </p>
+            </div>
+          )}
         </section>
       </div>
 
@@ -184,12 +203,51 @@ function Seguimiento() {
           <h2 id="cotizaciones-titulo">Cotizaciones pendientes</h2>
           <div className="seguimiento__cotizaciones">
             {servicio.cotizaciones_pendientes.map((cotizacion) => (
-              <article className="seguimiento__cotizacion" key={cotizacion.id}>
-                <h3>{cotizacion.numero}</h3>
+              <article
+                className={`seguimiento__cotizacion${cotizacion.es_bloqueante ? " seguimiento__cotizacion--bloqueante" : ""}`}
+                key={cotizacion.id}
+              >
+                <div className="seguimiento__cotizacion-encabezado">
+                  <div>
+                    <h3>{cotizacion.numero}</h3>
+                    <p>{cotizacion.tipo}</p>
+                  </div>
+                  {cotizacion.es_bloqueante && (
+                    <span className="seguimiento__cotizacion-alerta">
+                      Requerida para continuar
+                    </span>
+                  )}
+                </div>
                 <p>{cotizacion.descripcion}</p>
                 <strong>
                   Total: ${Number(cotizacion.total).toLocaleString("es-CO")}
                 </strong>
+                {cotizacion.es_bloqueante && (
+                  <p className="seguimiento__cotizacion-nota">
+                    Esta cotización es necesaria para continuar el trabajo sobre tu componente.
+                  </p>
+                )}
+                <details className="seguimiento__cotizacion-detalles">
+                  <summary>Ver detalles de la cotización</summary>
+                  {cotizacion.observaciones && (
+                    <div className="seguimiento__cotizacion-observaciones">
+                      <strong>Observaciones del asesor</strong>
+                      <p>{cotizacion.observaciones}</p>
+                    </div>
+                  )}
+                  {cotizacion.detalles.length > 0 && (
+                    <ul>
+                      {cotizacion.detalles.map((detalle) => (
+                        <li key={detalle.id ?? `${detalle.descripcion}-${detalle.cantidad}`}>
+                          <span>{detalle.descripcion}</span>
+                          <span>
+                            {detalle.cantidad} × ${Number(detalle.valor).toLocaleString("es-CO")}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </details>
                 <div className="seguimiento__acciones">
                   <button
                     className="seguimiento__boton"
@@ -230,6 +288,26 @@ function Seguimiento() {
             </p>
           )}
         </section>
+      )}
+      {servicio.fotografias.length > 0 && (
+        <details className="seguimiento__panel seguimiento__panel--fotografias">
+          <summary>Ver evidencias fotográficas ({servicio.fotografias.length})</summary>
+          <p className="seguimiento__seccion-ayuda">
+            Estas imágenes fueron marcadas por el equipo como visibles para ti.
+          </p>
+          <div className="seguimiento__fotografias">
+            {servicio.fotografias.map((foto, indice) => (
+              <figure className="seguimiento__fotografia" key={`${foto.url}-${indice}`}>
+                <img src={foto.url} alt={foto.descripcion || `Evidencia fotográfica ${indice + 1}`} />
+                <figcaption>
+                  <strong>{foto.tipo}</strong>
+                  {foto.descripcion && <span>{foto.descripcion}</span>}
+                  <time dateTime={foto.fecha}>{fechaVisible(foto.fecha)}</time>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </details>
       )}
       {respuesta.isSuccess && (
         <p className="seguimiento__resultado" role="status">

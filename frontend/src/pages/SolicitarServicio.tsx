@@ -376,6 +376,7 @@ function SolicitarServicio() {
                   value={form.nombre_cliente}
                   onChange={(e) => actualizarCampo('nombre_cliente', e.target.value)}
                 />
+                <p className="solicitud-ayuda">Escribe el nombre de la persona que coordinará el servicio.</p>
                 {errorCampos.nombre_cliente && (
                   <p id="f-nombre-error" className="solicitud-error-campo">
                     {errorCampos.nombre_cliente}
@@ -396,6 +397,7 @@ function SolicitarServicio() {
                   value={form.empresa}
                   onChange={(e) => actualizarCampo('empresa', e.target.value)}
                 />
+                <p className="solicitud-ayuda">Indica la empresa o escribe “Particular” si aplica.</p>
               </div>
 
               <div className="solicitud-campo">
@@ -415,6 +417,7 @@ function SolicitarServicio() {
                   value={form.correo_electronico}
                   onChange={(e) => actualizarCampo('correo_electronico', e.target.value)}
                 />
+                <p className="solicitud-ayuda">Usaremos este correo para enviarte novedades y cotizaciones.</p>
                 {errorCampos.correo_electronico && (
                   <p id="f-correo-error" className="solicitud-error-campo">
                     {errorCampos.correo_electronico}
@@ -438,6 +441,7 @@ function SolicitarServicio() {
                   value={form.telefono}
                   onChange={(e) => actualizarCampo('telefono', e.target.value)}
                 />
+                <p className="solicitud-ayuda">Un número alternativo donde podamos contactarte.</p>
                 {errorCampos.telefono && (
                   <p id="f-telefono-error" className="solicitud-error-campo">
                     {errorCampos.telefono}
@@ -469,7 +473,8 @@ function SolicitarServicio() {
               </div>
 
               <p id="f-contacto-ayuda" className="solicitud-ayuda solicitud-grid-full">
-                Indica tu número de WhatsApp. Lo usaremos para avisarte del avance de tu servicio.
+                Indica el número de WhatsApp con código de país si es necesario. Lo usaremos para
+                avisarte del avance de tu servicio.
               </p>
             </div>
           </fieldset>
@@ -496,6 +501,7 @@ function SolicitarServicio() {
                   value={form.descripcion_problema}
                   onChange={(e) => actualizarCampo('descripcion_problema', e.target.value)}
                 />
+                <p className="solicitud-ayuda">Cuéntanos qué componente tienes, qué falla presenta y qué necesitas revisar o reparar.</p>
                 <p id="f-descripcion-contador" className="solicitud-contador">
                   {form.descripcion_problema.length}/500
                 </p>
@@ -555,9 +561,10 @@ function SolicitarServicio() {
                       type="number"
                       min={1}
                       step={1}
-                      value={c.cantidad}
-                      onChange={(e) => actualizarComponente(idx, 'cantidad', Number(e.target.value))}
-                    />
+                  value={c.cantidad}
+                  onChange={(e) => actualizarComponente(idx, 'cantidad', Number(e.target.value))}
+                />
+                    <p className="solicitud-ayuda">Número de unidades del mismo componente.</p>
                   </div>
                   <div className="solicitud-campo">
                     <label className="solicitud-campo-label" htmlFor={`c-${idx}-marca`}>
@@ -571,6 +578,7 @@ function SolicitarServicio() {
                       value={c.marca}
                       onChange={(e) => actualizarComponente(idx, 'marca', e.target.value)}
                     />
+                    <p className="solicitud-ayuda">Fabricante o marca del componente, si la conoces.</p>
                   </div>
                   <div className="solicitud-campo">
                     <label className="solicitud-campo-label" htmlFor={`c-${idx}-referencia`}>
@@ -584,6 +592,7 @@ function SolicitarServicio() {
                       value={c.referencia}
                       onChange={(e) => actualizarComponente(idx, 'referencia', e.target.value)}
                     />
+                    <p className="solicitud-ayuda">Código, modelo o referencia que aparece en la placa.</p>
                   </div>
                   <div className="solicitud-campo solicitud-grid-full">
                     <label className="solicitud-campo-label" htmlFor={`c-${idx}-descripcion`}>
@@ -597,6 +606,7 @@ function SolicitarServicio() {
                       value={c.descripcion}
                       onChange={(e) => actualizarComponente(idx, 'descripcion', e.target.value)}
                     />
+                    <p className="solicitud-ayuda">Agrega síntomas, daños visibles o información útil del equipo.</p>
                     <p className="solicitud-contador">{c.descripcion.length}/500</p>
                   </div>
                 </div>
