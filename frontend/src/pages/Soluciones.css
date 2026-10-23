@@ -12,7 +12,7 @@
 .soluciones-hero {
   position: relative;
   display: grid;
-  min-height: clamp(30rem, 62vw, 43rem);
+  min-height: clamp(19rem, 42vw, 29rem);
   margin-inline: calc(50% - 50vw);
   overflow: hidden;
   isolation: isolate;
@@ -24,7 +24,8 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background-position: center;
+  background-position: center top;
+  background-repeat: no-repeat;
   background-size: cover;
 }
 
@@ -33,7 +34,7 @@
 }
 
 .soluciones-hero--productos {
-  min-height: clamp(22rem, 46vw, 32rem);
+  min-height: clamp(16rem, 34vw, 24rem);
 }
 
 .soluciones-hero--servicios::before {
@@ -42,7 +43,7 @@
 
 .soluciones-hero__contenido {
   align-self: center;
-  width: min(100% - 2rem, 31rem);
+  width: min(100% - 2rem, 34rem);
   margin: 1rem;
   padding: clamp(1.1rem, 3vw, 2rem);
   color: var(--color-white);
@@ -62,19 +63,34 @@
   color: var(--color-accent);
   font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
+.soluciones-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.soluciones-hero__eyebrow::before {
+  width: 2.2rem;
+  height: 2px;
+  background: var(--color-accent);
+  content: "";
+}
+
 .soluciones-hero__titulo {
-  max-width: 22ch;
+  max-width: 24ch;
   margin: 0;
   color: var(--color-white);
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.8rem, 5vw, 3.5rem);
+  font-size: clamp(1.75rem, 3.6vw, 2.9rem);
+  letter-spacing: -0.04em;
   line-height: 1.05;
   text-wrap: balance;
+  text-shadow: 0 4px 24px rgb(0 0 0 / 28%);
 }
 
 .soluciones-hero__texto {
@@ -100,7 +116,8 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(1.55rem, 3vw, 2.35rem);
-  line-height: 1.15;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   text-wrap: balance;
 }
 
@@ -108,8 +125,9 @@
   max-width: 58ch;
   margin: 0.75rem 0 0;
   color: var(--soluciones-muted);
-  font-size: 1.05rem;
-  line-height: 1.65;
+  font-size: 1rem;
+  line-height: 1.6;
+  text-align: justify;
 }
 
 .soluciones-galeria {

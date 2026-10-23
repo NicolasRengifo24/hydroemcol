@@ -1,33 +1,26 @@
-/* Estilos base de la página Nosotros (specs/009-vista-nosotros).
-   Reutilizan los tokens definidos en src/index.css (colores de marca, --radius-*,
-   --sombra-*, --degradado-acento, --degradado-marca, --color-primary-deep y
-   --font-display) SIN redefinir colores de marca.
-
-   Reutiliza también las clases globales ya definidas en inicio.css, que en esta
-   página llegan a través de los componentes reutilizados (SeccionEncabezado):
-   .seccion, .seccion__encabezado, .seccion__titulo,
-   .seccion__intro y .revelar / .revelar--visible (incluida su anulación bajo
-   prefers-reduced-motion: reduce, definida allí). Este archivo NO las redefine
-   para evitar desincronizaciones (riesgo R4 del plan).
+/* Estilos de la página Nosotros.
+   Reutilizan los tokens de src/index.css (colores de marca, --radius-*,
+   --degradado-acento, --degradado-marca, --color-primary-deep y --font-display)
+   sin redefinir colores de marca. La tipografía de títulos y cuerpos sigue el
+   mismo lenguaje visual de Inicio y Soluciones.
 
    Base mobile-first: los estilos base son para móvil; las mejoras se aplican con
-   min-width. Sin desplazamiento horizontal en ningún breakpoint: todo bloque usa
-   minmax(0, 1fr) o min-width: 0, y el mapa va con width: 100%. Textos de cuerpo
-   desde 16px (1rem) y elementos interactivos desde 44x44 px. */
+   min-width. Todo bloque usa minmax(0, 1fr) o min-width: 0 para evitar
+   desplazamiento horizontal. */
 
-/* ---------- Sección 1: hero oscuro (RF-2, D-1 y D-5) ---------- */
+/* ---------- Sección 1: hero ---------- */
 
-/* Mismo patrón de breakout a pantalla completa que el .hero de Inicio
-   (100vw + margin-inline). El fondo oscuro base garantiza RF-2.3: si la imagen
-   no carga, el bloque sigue oscuro y el mensaje, legible. */
 .hero-nosotros {
   position: relative;
   isolation: isolate;
+  display: grid;
+  align-items: center;
   overflow: hidden;
   width: 100vw;
-  margin-inline: calc(50% - 50vw);
   min-width: 0;
-  padding: 3rem 1.25rem 2.5rem;
+  min-height: clamp(19rem, 42vw, 30rem);
+  margin-inline: calc(50% - 50vw);
+  padding: clamp(3rem, 7vw, 4.5rem) clamp(1.25rem, 6vw, 3rem);
   color: var(--color-white);
   background: var(--color-primary-deep);
 }
@@ -39,51 +32,79 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 60% 50%;
+  object-position: 68% 38%;
 }
 
-/* Velo oscuro con contraste suficiente para texto blanco (RNF-6): incluso sobre
-   una imagen clara, la mezcla resultante supera 4.5:1 frente a #ffffff. */
 .hero-nosotros__velo {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(
-    180deg,
-    rgb(28 30 88 / 84%) 0%,
-    rgb(28 30 88 / 78%) 55%,
-    rgb(21 24 63 / 88%) 100%
-  );
+  background:
+    linear-gradient(
+      100deg,
+      rgb(20 23 63 / 94%) 0%,
+      rgb(28 30 88 / 82%) 46%,
+      rgb(28 30 88 / 42%) 100%
+    );
 }
 
-/* Texto central sobre la imagen (D-1): bloque centrado, sin tarjetas. */
 .hero-nosotros__contenido {
   display: grid;
-  gap: 1.5rem;
-  justify-items: center;
+  gap: 1.15rem;
+  justify-items: start;
+  width: min(100%, 46rem);
   min-width: 0;
-  max-width: 46rem;
-  margin-inline: auto;
-  text-align: center;
+}
+
+.hero-nosotros__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.hero-nosotros__eyebrow::before {
+  width: 2.4rem;
+  height: 2px;
+  background: var(--color-accent);
+  content: "";
 }
 
 .hero-nosotros__mensaje {
+  max-width: 46rem;
+  margin: 0;
+  color: var(--color-white);
   font-family: var(--font-display);
   font-weight: 700;
-  color: var(--color-white);
-  margin: 0;
-  font-size: clamp(1.75rem, 6vw, 2.75rem);
-  line-height: 1.15;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  letter-spacing: -0.045em;
+  line-height: 1.04;
   text-wrap: balance;
   overflow-wrap: break-word;
+  text-shadow: 0 4px 24px rgb(0 0 0 / 30%);
+}
+
+.hero-nosotros__texto {
+  max-width: 38rem;
+  margin: 0;
+  color: rgb(255 255 255 / 86%);
+  font-size: 1.05rem;
+  line-height: 1.65;
 }
 
 .hero-nosotros__cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
   min-height: 44px;
-  padding: 0.75rem 1.5rem;
+  padding: 0.8rem 1.5rem;
   border-radius: var(--radius-control);
   background: var(--degradado-acento);
   color: var(--color-primary-dark);
@@ -107,88 +128,222 @@
   box-shadow: 0 0 0 6px var(--color-primary-dark);
 }
 
-@media (min-width: 768px) {
-  .hero-nosotros {
-    padding: 4rem 2rem 3.25rem;
-  }
-}
-
-@media (min-width: 900px) {
-  .hero-nosotros {
-    padding: 5rem 3rem 3.75rem;
-  }
-
-  .hero-nosotros__mensaje {
-    font-size: clamp(2rem, 3.2vw, 3.2rem);
-  }
-}
-
-/* ---------- Sección 2: quiénes somos (RF-3) ---------- */
+/* ---------- Sección 2: quiénes somos ---------- */
 
 .seccion--quienes {
-  padding: clamp(1.5rem, 4vw, 2.75rem);
-  border-left: 5px solid var(--color-accent);
-  border-radius: 0 var(--radius-card) var(--radius-card) 0;
+  padding: 0;
+  background: none;
+}
+
+.quienes-hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-items: center;
+  overflow: hidden;
+  min-width: 0;
+  min-height: clamp(19rem, 36vw, 27rem);
+  padding: clamp(1.25rem, 4vw, 3rem);
+  border-radius: 18px;
+  background: var(--color-primary-deep);
+  box-shadow: 0 18px 42px rgb(35 38 110 / 16%);
+}
+
+.quienes-hero__fondo {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 28%;
+}
+
+.quienes-hero__velo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background: linear-gradient(
-    120deg,
-    var(--color-primary-soft) 0%,
-    var(--color-white) 62%
+    90deg,
+    rgb(20 23 63 / 95%) 0%,
+    rgb(28 30 88 / 82%) 52%,
+    rgb(28 30 88 / 38%) 100%
   );
 }
 
-.quienes-somos__texto {
+.quienes-hero__contenido {
+  width: min(100%, 42rem);
+  min-width: 0;
+  padding: clamp(1.15rem, 3vw, 2rem);
+  border-left: 4px solid var(--color-accent);
+  border-radius: 0 var(--radius-card) var(--radius-card) 0;
+  background: rgb(12 27 65 / 86%);
+  box-shadow: 0 16px 34px rgb(0 0 0 / 22%);
+  backdrop-filter: blur(6px);
+}
+
+.quienes-hero__eyebrow {
+  margin: 0 0 0.45rem;
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.quienes-hero__titulo {
   margin: 0;
-  max-width: 58rem;
-  color: var(--color-text);
-  font-size: clamp(1.05rem, 1.6vw, 1.2rem);
-  line-height: 1.8;
+  color: var(--color-white);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.quienes-somos__texto {
+  margin: 0.9rem 0 0;
+  color: rgb(255 255 255 / 88%);
+  font-size: 1rem;
+  line-height: 1.75;
+  text-align: justify;
   overflow-wrap: break-word;
 }
 
-/* ---------- Sección 3: misión, visión y valores + cita (RF-4) ---------- */
-
-.seccion--identidad {
-  padding: 1.75rem 1.25rem;
-  border-radius: 16px;
-  background: var(--color-bg-alt);
+.quienes-somos__texto + .quienes-somos__texto {
+  margin-top: 0.75rem;
 }
 
-.identidad__rejilla {
+/* ---------- Sección 3: misión, visión y valores ---------- */
+
+.seccion--identidad {
+  padding: 0;
+  background: none;
+}
+
+.identidad__paneles {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
 
-.identidad__bloque {
+.identidad-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
   min-width: 0;
-  padding: 1.1rem 1.2rem;
+  min-height: clamp(17rem, 30vw, 24rem);
+  padding: clamp(1rem, 3vw, 2rem);
+  border-radius: 18px;
+  background: var(--color-primary-deep);
+  box-shadow: 0 14px 34px rgb(35 38 110 / 12%);
+}
+
+.identidad-hero__fondo {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.identidad-hero--mision .identidad-hero__fondo {
+  object-position: 50% 30%;
+}
+
+.identidad-hero--vision .identidad-hero__fondo {
+  object-position: 50% 45%;
+}
+
+.identidad-hero--valores .identidad-hero__fondo {
+  object-position: 50% 24%;
+}
+
+.identidad-hero__velo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    90deg,
+    rgb(20 23 63 / 94%) 0%,
+    rgb(28 30 88 / 80%) 55%,
+    rgb(28 30 88 / 40%) 100%
+  );
+}
+
+.identidad-hero__contenido {
+  width: min(100%, 34rem);
+  min-width: 0;
+  margin-right: auto;
+  padding: clamp(1.15rem, 2.5vw, 1.9rem);
   border-left: 4px solid var(--color-accent);
-  border-radius: 0 var(--radius-control) var(--radius-control) 0;
-  background: var(--color-white);
+  border-radius: 0 var(--radius-card) var(--radius-card) 0;
+  background: rgb(12 27 65 / 86%);
+  box-shadow: 0 16px 34px rgb(0 0 0 / 22%);
+  backdrop-filter: blur(6px);
+}
+
+.identidad-hero__icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.7rem;
+  height: 2.7rem;
+  margin-bottom: 0.8rem;
+  border-radius: 10px;
+  background: var(--degradado-acento);
+  color: var(--color-primary-dark);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 20%);
+}
+
+.identidad-hero__titulo {
+  margin: 0;
+  color: var(--color-white);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.identidad-hero__texto {
+  margin: 0.7rem 0 0;
+  color: rgb(255 255 255 / 88%);
+  font-size: 1rem;
+  line-height: 1.7;
+  text-align: justify;
   overflow-wrap: break-word;
 }
 
-.identidad__titulo {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  margin: 0 0 0.5rem;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.05rem;
-  line-height: 1.3;
-  color: var(--color-primary);
+@media (min-width: 768px) {
+  .identidad-hero--derecha {
+    justify-content: flex-end;
+  }
+
+  .identidad-hero--derecha .identidad-hero__contenido {
+    margin-right: 0;
+    margin-left: auto;
+    border-right: 4px solid var(--color-accent);
+    border-left: 0;
+    border-radius: var(--radius-card) 0 0 var(--radius-card);
+  }
+
+  .identidad-hero--derecha .identidad-hero__velo {
+    background: linear-gradient(
+      270deg,
+      rgb(20 23 63 / 94%) 0%,
+      rgb(28 30 88 / 80%) 55%,
+      rgb(28 30 88 / 40%) 100%
+    );
+  }
 }
 
-.identidad__texto {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 1rem;
-  line-height: 1.6;
-}
-
-/* Cita diferenciada: banda oscura de marca, distintiva de los bloques de
-   identidad (RF-4.2), con remate de acento. */
+/* Cita diferenciada en banda oscura, con remate de acento. */
 .identidad__cita {
   position: relative;
   margin: 1.25rem 0 0;
@@ -224,174 +379,188 @@
 }
 
 @media (min-width: 768px) {
-  .seccion--identidad {
-    padding: 2rem 1.5rem;
-  }
-
-  .identidad__rejilla {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .identidad__paneles {
     gap: 1.25rem;
   }
 }
 
-/* ---------- Sección 4: capacidades técnicas en filas editoriales (RF-5, D-3) ---------- */
-
-.seccion--capacidades {
-  padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1rem, 4vw, 2.25rem);
-  border-radius: var(--radius-card);
-  background: linear-gradient(
-    180deg,
-    var(--color-white) 0%,
-    var(--color-bg-alt) 100%
-  );
-}
-
-/* Formato editorial con icono lateral: icono + título + descripción, separados
-   por filetes sutiles. Sin bordes de tarjeta como en Inicio. */
-.capacidades {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.capacidad-fila {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 0.35rem 1rem;
-  min-width: 0;
-  padding: 1.25rem 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.capacidad-fila:first-child {
-  border-top: 1px solid var(--color-border);
-}
-
-.capacidad-fila__icono {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  grid-row: 1 / span 2;
-  flex-shrink: 0;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 10px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-  box-shadow: inset 0 0 0 1px rgb(46 49 146 / 14%);
-}
-
-.capacidad-fila__titulo {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.05rem;
-  line-height: 1.3;
-  color: var(--color-primary);
-}
-
-.capacidad-fila__texto {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 1rem;
-  line-height: 1.6;
-  overflow-wrap: break-word;
-}
-
-@media (min-width: 768px) {
-  .capacidad-fila {
-    gap: 0.4rem 1.25rem;
-    padding: 1.5rem 0;
-  }
-
-  .capacidad-fila__icono {
-    width: 3.25rem;
-    height: 3.25rem;
-  }
-
-  .capacidad-fila__titulo {
-    font-size: 1.15rem;
-  }
-}
-
-/* ---------- Sección 5: ubicación y mapa (RF-10) ---------- */
+/* ---------- Sección 4: ubicación y mapa ---------- */
 
 .seccion--ubicacion {
-  padding: 1.75rem 1.25rem;
-  border-radius: 16px;
-  background: var(--color-bg-alt);
+  padding: 0;
+  background: none;
 }
 
-.ubicacion__rejilla {
+.ubicacion__panel {
+  position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 1.25rem;
+  gap: 1rem;
   min-width: 0;
+  padding: clamp(1rem, 3vw, 1.75rem);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 86% 0%, rgb(255 201 8 / 18%), transparent 44%),
+    linear-gradient(
+      135deg,
+      var(--color-primary-dark) 0%,
+      var(--color-primary-deep) 100%
+    );
+  box-shadow: 0 18px 42px rgb(35 38 110 / 16%);
 }
 
-.ubicacion__direccion {
+.ubicacion__panel::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgb(255 255 255 / 5%) 0 1px,
+      transparent 1px 24px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgb(255 255 255 / 3%) 0 1px,
+      transparent 1px 24px
+    );
+  content: "";
+  pointer-events: none;
+}
+
+.ubicacion__info {
+  display: grid;
+  align-content: start;
+  gap: 0.9rem;
   min-width: 0;
+  padding: clamp(1.1rem, 2.5vw, 1.6rem);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--radius-card);
+  background: rgb(255 255 255 / 8%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%);
+  backdrop-filter: blur(8px);
+}
+
+.ubicacion__eyebrow {
   margin: 0;
-  padding: 1.1rem 1.2rem;
-  background: var(--color-white);
-  border: 1px solid var(--color-border);
-  border-left: 4px solid var(--color-primary);
-  border-radius: 0 var(--radius-control) var(--radius-control) 0;
-  overflow-wrap: break-word;
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
-.ubicacion__etiqueta {
-  margin: 0 0 0.25rem;
-  color: var(--color-text-muted);
-  font-size: 1rem;
+.ubicacion__titulo {
+  margin: 0;
+  color: var(--color-white);
+  font-family: var(--font-display);
   font-weight: 700;
+  font-size: clamp(1.4rem, 3vw, 1.9rem);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 
-.ubicacion__valor {
+.ubicacion__linea,
+.ubicacion__horario {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
   margin: 0;
-  color: var(--color-text);
+  color: rgb(255 255 255 / 88%);
   font-size: 1rem;
-  font-weight: 600;
   line-height: 1.5;
+}
+
+.ubicacion__linea svg,
+.ubicacion__horario svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--color-accent);
+}
+
+.ubicacion__estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: fit-content;
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ubicacion__estado--abierto {
+  border: 1px solid rgb(87 214 143 / 55%);
+  background: rgb(31 122 69 / 30%);
+  color: #b9f4d2;
+}
+
+.ubicacion__estado--cerrado {
+  border: 1px solid rgb(255 138 128 / 55%);
+  background: rgb(179 38 30 / 30%);
+  color: #ffd0cb;
+}
+
+.ubicacion__estado-punto {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 4px rgb(255 255 255 / 10%);
 }
 
 .ubicacion__enlace {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
+  justify-self: start;
   min-height: 44px;
-  margin-top: 0.75rem;
-  padding: 0.5rem 0.25rem;
-  color: var(--color-primary);
-  font-weight: 600;
+  margin-top: 0.2rem;
+  padding: 0.7rem 1.1rem;
+  border-radius: var(--radius-control);
+  background: var(--degradado-acento);
+  color: var(--color-primary-dark);
+  font-weight: 700;
   text-decoration: none;
-  border-radius: 4px;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 18%);
 }
 
-.ubicacion__enlace:hover {
-  color: var(--color-primary-dark);
-  text-decoration: underline;
-  text-underline-offset: 4px;
+.ubicacion__enlace:hover,
+.ubicacion__enlace:active {
+  background: var(--color-accent-hover);
 }
 
 .ubicacion__enlace:focus-visible {
-  outline: 3px solid var(--color-primary);
+  outline: 3px solid var(--color-white);
   outline-offset: 3px;
   box-shadow: 0 0 0 6px var(--color-accent);
 }
 
-/* Mapa responsive sin overflow: el iframe ocupa el 100 % del marco y el marco
-   mantiene proporción estable (RF-10.3). */
 .ubicacion__mapa {
+  position: relative;
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
-  background: var(--color-primary-soft);
-  border: 1px solid var(--color-border);
+  border: 1px solid rgb(255 255 255 / 22%);
   border-radius: var(--radius-card);
+  background: var(--color-primary-soft);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 26%);
+}
+
+.ubicacion__mapa::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 12%);
+  content: "";
+  pointer-events: none;
 }
 
 .ubicacion__iframe {
@@ -401,24 +570,22 @@
   border: 0;
 }
 
-@media (min-width: 768px) {
-  .seccion--ubicacion {
-    padding: 2rem 1.5rem;
-  }
-}
-
 @media (min-width: 900px) {
-  .ubicacion__rejilla {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
-    align-items: start;
+  .ubicacion__panel {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.3fr);
+    align-items: stretch;
+    gap: 1.25rem;
+  }
+
+  .ubicacion__mapa {
+    min-height: 19rem;
+    aspect-ratio: auto;
+    height: 100%;
   }
 }
 
-/* ---------- Sección 6: llamado a la acción final (RF-7, D-4) ---------- */
+/* ---------- Sección 5: llamado a la acción final ---------- */
 
-/* Banda oscura con el mismo patrón de marca que el CTA de Inicio, con la
-   acción principal en acento (texto oscuro, contraste AA) y la secundaria en
-   contorno claro para diferenciar la jerarquía. */
 .cta-nosotros {
   position: relative;
   isolation: isolate;
@@ -436,8 +603,6 @@
     );
 }
 
-/* Patrón geométrico decorativo (no comunica información, fuera del árbol de
-   accesibilidad por ser puramente visual). */
 .cta-nosotros__patron {
   position: absolute;
   inset: 0;
@@ -460,7 +625,8 @@
   margin: 0;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.5rem;
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
+  letter-spacing: -0.02em;
   line-height: 1.2;
   color: var(--color-white);
 }
@@ -498,7 +664,6 @@
   text-decoration: none;
 }
 
-/* Principal: acento amarillo con texto oscuro (mismo patrón que Inicio). */
 .cta-nosotros__accion--principal {
   background: var(--degradado-acento);
   color: var(--color-primary-dark);
@@ -510,7 +675,6 @@
   background: var(--color-accent-hover);
 }
 
-/* Secundaria: contorno claro sobre la banda oscura, jerarquía diferenciada. */
 .cta-nosotros__accion--secundaria {
   background: transparent;
   border-color: rgb(255 255 255 / 65%);
@@ -540,12 +704,8 @@
   }
 }
 
-/* ---------- Movimiento reducido (RNF-7, RF-9.2) ---------- */
+/* ---------- Movimiento reducido ---------- */
 
-/* La animación de aparición (.revelar) ya queda anulada porque sus reglas
-   viven bajo prefers-reduced-motion: no-preference en inicio.css. Aquí se
-   apagan además las transiciones propias de estos elementos para que, con
-   reducir movimiento, la página quede estática y completa. */
 @media (prefers-reduced-motion: reduce) {
   .hero-nosotros__cta,
   .ubicacion__enlace,

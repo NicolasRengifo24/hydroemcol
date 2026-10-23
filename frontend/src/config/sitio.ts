@@ -42,6 +42,38 @@ export function urlLlamada(): string {
 // inventan coordenadas ni puntos de referencia (RF-10.4).
 export const DIRECCION = 'Ac. 6 #27b-55'
 
+// Horario de atención confirmado por el usuario. Única fuente de verdad del
+// horario visible y del estado abierto/cerrado que se muestra en Nosotros.
+export const HORARIO = {
+  apertura: 8,
+  cierre: 18,
+  texto: '8:00 a.m. - 6:00 p.m.',
+  zonaHoraria: 'America/Bogota',
+} as const
+
+// Devuelve true si la hora actual (en la zona horaria de la empresa) está dentro
+// del horario de atención. Solo se evalúa el rango horario: los días de cierre
+// no están definidos en el contexto del proyecto y no se inventan aquí.
+export function estaDentroDelHorario(fecha: Date = new Date()): boolean {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: HORARIO.zonaHoraria,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(fecha)
+
+  const hora = Number(partes.find((parte) => parte.type === 'hour')?.value ?? 0)
+  const minuto = Number(
+    partes.find((parte) => parte.type === 'minute')?.value ?? 0,
+  )
+  const minutosDelDia = hora * 60 + minuto
+
+  return (
+    minutosDelDia >= HORARIO.apertura * 60 &&
+    minutosDelDia < HORARIO.cierre * 60
+  )
+}
+
 // URL de Google Maps para embeber el mapa de la dirección en un iframe
 // accesible (RF-10.1). Se construye desde DIRECCION para no duplicarla; el
 // parámetro output=embed devuelve la vista embebible sin API key.

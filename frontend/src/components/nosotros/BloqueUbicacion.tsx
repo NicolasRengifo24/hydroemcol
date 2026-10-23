@@ -1,5 +1,13 @@
+import { useEffect, useState } from "react";
+import { Clock, MapPin, Navigation } from "lucide-react";
 import { SeccionEncabezado } from "../inicio/SeccionEncabezado";
-import { DIRECCION, URL_GOOGLE_MAPS, URL_GOOGLE_MAPS_EMBED } from "../../config/sitio";
+import {
+  DIRECCION,
+  HORARIO,
+  URL_GOOGLE_MAPS,
+  URL_GOOGLE_MAPS_EMBED,
+  estaDentroDelHorario,
+} from "../../config/sitio";
 import { useAparecerAlEntrar } from "../../hooks/useAparecerAlEntrar";
 import "./nosotros.css";
 
@@ -33,6 +41,15 @@ interface BloqueUbicacionProps {
 
 export function BloqueUbicacion({ id = "ubicacion" }: BloqueUbicacionProps) {
   const { ref, visible } = useAparecerAlEntrar<HTMLElement>();
+  const [abierto, setAbierto] = useState(() => estaDentroDelHorario());
+
+  useEffect(() => {
+    const intervalo = window.setInterval(
+      () => setAbierto(estaDentroDelHorario()),
+      60_000,
+    );
+    return () => window.clearInterval(intervalo);
+  }, []);
 
   return (
     <section
@@ -42,19 +59,39 @@ export function BloqueUbicacion({ id = "ubicacion" }: BloqueUbicacionProps) {
     >
       <SeccionEncabezado id={id} nivel={2} titulo="Ubicación" />
 
-      <div className="ubicacion__rejilla">
-        <div className="ubicacion__direccion">
-          {/* PROVISIONAL (RF-11.1): rótulos de interfaz pendientes de validación. */}
-          <p className="ubicacion__etiqueta">Dirección</p>
-          <p className="ubicacion__valor">{DIRECCION}</p>
-          <p className="ubicacion__valor">Horario: 8:00 a.m. - 6:00 p.m.</p>
-          <p className="ubicacion__valor">Correo: hydroemcolservice@gmail.com</p>
+      <div className="ubicacion__panel">
+        <div className="ubicacion__info">
+          <p className="ubicacion__eyebrow">Visítanos</p>
+          <h3 className="ubicacion__titulo">Nuestra sede</h3>
+
+          <p className="ubicacion__linea">
+            <MapPin size={20} aria-hidden="true" />
+            <span>{DIRECCION}</span>
+          </p>
+
+          <p
+            className={`ubicacion__estado ${
+              abierto
+                ? "ubicacion__estado--abierto"
+                : "ubicacion__estado--cerrado"
+            }`}
+          >
+            <span className="ubicacion__estado-punto" aria-hidden="true" />
+            {abierto ? "Abierto ahora" : "Cerrado ahora"}
+          </p>
+
+          <p className="ubicacion__horario">
+            <Clock size={20} aria-hidden="true" />
+            <span>Horario: {HORARIO.texto}</span>
+          </p>
+
           <a
             className="ubicacion__enlace"
             href={URL_GOOGLE_MAPS}
             target="_blank"
             rel="noopener noreferrer"
           >
+            <Navigation size={18} aria-hidden="true" />
             Abrir en Google Maps
             <span className="sr-only"> (se abre en una pestaña nueva)</span>
           </a>

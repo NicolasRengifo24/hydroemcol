@@ -1,5 +1,4 @@
-import { useRef } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { Marca } from "./contenido";
 import "./inicio.css";
 
@@ -11,19 +10,40 @@ interface ListaMarcasProps {
 export function ListaMarcas({ marcas, className = "" }: ListaMarcasProps) {
   const classNameFinal = className ? `marcas ${className}` : "marcas";
   const carruselRef = useRef<HTMLUListElement>(null);
+  const [pausado, setPausado] = useState(false);
 
-  function desplazar(direccion: number) {
-    carruselRef.current?.scrollBy({
-      left: direccion * Math.max(carruselRef.current.clientWidth * 0.72, 220),
-      behavior: "smooth",
-    });
-  }
+  useEffect(() => {
+    const carrusel = carruselRef.current;
+    if (!carrusel || marcas.length < 2) return;
+
+    const reducirMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reducirMovimiento) return;
+
+    const temporizador = window.setInterval(() => {
+      if (pausado) return;
+      const limite = carrusel.scrollWidth - carrusel.clientWidth;
+      if (carrusel.scrollLeft >= limite - 1) {
+        carrusel.scrollLeft = 0;
+        return;
+      }
+      carrusel.scrollLeft += 0.7;
+    }, 30);
+
+    return () => window.clearInterval(temporizador);
+  }, [marcas.length, pausado]);
 
   return (
-    <div className="marcas__carrusel" role="region" aria-label="Marcas con las que trabajamos">
-      <button className="marcas__control" type="button" onClick={() => desplazar(-1)} aria-label="Ver marcas anteriores">
-        <ChevronLeft size={20} aria-hidden="true" />
-      </button>
+    <div
+      className="marcas__carrusel"
+      role="region"
+      aria-label="Marcas con las que trabajamos"
+      onMouseEnter={() => setPausado(true)}
+      onMouseLeave={() => setPausado(false)}
+      onFocus={() => setPausado(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setPausado(false);
+      }}
+    >
       <ul ref={carruselRef} className={classNameFinal}>
         {marcas.map((marca) => (
           <li key={marca.nombre} className="marcas__item">
@@ -39,9 +59,6 @@ export function ListaMarcas({ marcas, className = "" }: ListaMarcasProps) {
           </li>
         ))}
       </ul>
-      <button className="marcas__control" type="button" onClick={() => desplazar(1)} aria-label="Ver marcas siguientes">
-        <ChevronRight size={20} aria-hidden="true" />
-      </button>
     </div>
   );
 }

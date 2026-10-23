@@ -37,7 +37,7 @@ export interface ImagenFolleto {
 // Síntesis de las descripciones ya aprobadas de las tres tarjetas (RF-2.4–2.6).
 // Pendiente de confirmación del cliente; se cambia aquí y en ningún otro sitio.
 export const MENSAJE_HERO =
-  "Servicio técnico hidráulico y electrohidráulico, repuestos e importación sobre pedido";
+  "Soluciones hidráulicas y electrohidráulicas para una operación que no se detiene";
 
 // Las tres tarjetas del hero (RF-2.3). Títulos y descripciones literales de
 // RF-2.4, RF-2.5 y RF-2.6 de la spec.

@@ -24,7 +24,12 @@ export interface ImagenHero {
 // sin datos duros (años, cifras ni certificaciones). Pendiente de
 // validación del cliente; se cambia aquí y en ningún otro sitio.
 export const MENSAJE_HERO_NOSOTROS =
-  "Empresa técnica e industrial especializada en sistemas hidráulicos y electrohidráulicos: servicio técnico, repuestos e importación sobre pedido";
+  "Soluciones hidráulicas y electrohidráulicas para tu operación";
+
+// PROVISIONAL (RF-11.1): apoyo breve del hero. Resume la oferta real de la
+// empresa sin añadir datos nuevos y se mantiene corto para no saturar el hero.
+export const SUBTITULO_HERO_NOSOTROS =
+  "Servicio técnico, repuestos e importación sobre pedido con respaldo especializado.";
 
 // PROVISIONAL hasta su validación final (RF-3.1 y RF-11.1): párrafo literal
 // de "Quiénes somos" tal como está fijado en la spec. No reescribir ni ampliar
@@ -39,6 +44,19 @@ export const TEXTO_QUIENES_SOMOS =
   "soluciones de control aplicadas a equipos de trabajo pesado. Nuestro enfoque se fundamenta " +
   "en el respeto, la honestidad y la responsabilidad, con una prioridad clara: el bienestar y " +
   "el amor por la familia.";
+
+// El texto se presenta en dos párrafos para mejorar la lectura, sin cambiar
+// ninguna palabra del contenido aprobado. El corte se hace en el conector
+// natural "Complementamos", que separa la presentación de la oferta ampliada.
+const CORTE_QUIENES_SOMOS = TEXTO_QUIENES_SOMOS.indexOf("Complementamos");
+
+export const PARRAFOS_QUIENES_SOMOS: string[] =
+  CORTE_QUIENES_SOMOS > 0
+    ? [
+        TEXTO_QUIENES_SOMOS.slice(0, CORTE_QUIENES_SOMOS).trim(),
+        TEXTO_QUIENES_SOMOS.slice(CORTE_QUIENES_SOMOS).trim(),
+      ]
+    : [TEXTO_QUIENES_SOMOS];
 
 // Misión, Visión y Valores literales de la "Versión para el sitio" del folleto
 // (`specs/003-pagina-inicio/contenido-folleto.md`), copiados tal cual sin

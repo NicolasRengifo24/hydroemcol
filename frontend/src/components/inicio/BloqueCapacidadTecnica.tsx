@@ -38,7 +38,7 @@ export function BloqueCapacidadTecnica({
         titulo="Componentes y capacidad técnica"
       />
       <div className="capacidad__contenido">
-        <details className="capacidad__bloque" open>
+        <details className="capacidad__bloque">
           <summary className="capacidad__subtitulo">
             <span
               className="tarjeta__icono tarjeta__icono--linea"

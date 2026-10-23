@@ -12,7 +12,11 @@
 // con `target="_blank"`, `rel="noopener noreferrer"` y el aviso `sr-only` ya
 // usado en el resto del sitio (RF-7.3).
 import { MessageCircle } from 'lucide-react'
-import { MENSAJE_HERO_NOSOTROS, HERO_NOSOTROS } from './contenido'
+import {
+  HERO_NOSOTROS,
+  MENSAJE_HERO_NOSOTROS,
+  SUBTITULO_HERO_NOSOTROS,
+} from './contenido'
 import { urlWhatsApp } from '../../config/sitio'
 import './nosotros.css'
 
@@ -33,9 +37,11 @@ export function HeroNosotros() {
       <div className="hero-nosotros__velo" aria-hidden="true" />
 
       <div className="hero-nosotros__contenido">
+        <p className="hero-nosotros__eyebrow">Hydroemcol · Nosotros</p>
         <h1 id="nosotros-hero" className="hero-nosotros__mensaje">
           {MENSAJE_HERO_NOSOTROS}
         </h1>
+        <p className="hero-nosotros__texto">{SUBTITULO_HERO_NOSOTROS}</p>
         <a
           className="hero-nosotros__cta"
           href={urlWhatsApp()}
