@@ -47,6 +47,8 @@ export function BloqueUbicacion({ id = "ubicacion" }: BloqueUbicacionProps) {
           {/* PROVISIONAL (RF-11.1): rótulos de interfaz pendientes de validación. */}
           <p className="ubicacion__etiqueta">Dirección</p>
           <p className="ubicacion__valor">{DIRECCION}</p>
+          <p className="ubicacion__valor">Horario: 8:00 a.m. - 6:00 p.m.</p>
+          <p className="ubicacion__valor">Correo: hydroemcolservice@gmail.com</p>
           <a
             className="ubicacion__enlace"
             href={URL_GOOGLE_MAPS}

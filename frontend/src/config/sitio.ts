@@ -19,8 +19,7 @@ export const NUMERO_CONTACTO_MOSTRADO = NUMERO_CONTACTO.replace(
 export const MENSAJE_WHATSAPP = 'Hola, quiero información sobre el servicio técnico de Hidroemcol.'
 
 // Enlace a la página de Facebook de la empresa, única red social del sitio (RF-10.3).
-// URL PROVISIONAL/TEMPORAL: pendiente de confirmar por el usuario.
-export const URL_FACEBOOK = 'https://www.facebook.com/hidroemcol'
+export const URL_FACEBOOK = 'https://web.facebook.com/hidroemcolservice'
 
 // Construye el enlace de WhatsApp hacia NUMERO_CONTACTO (RF-9.3).
 // El número pierde los caracteres no numéricos y el texto se codifica con
@@ -41,7 +40,7 @@ export function urlLlamada(): string {
 // Dirección física de la empresa, aprobada por el usuario (RF-10.1, D-6 de
 // specs/009-vista-nosotros). Única fuente de verdad de la dirección: no se
 // inventan coordenadas ni puntos de referencia (RF-10.4).
-export const DIRECCION = 'Calle 6 # 27b-55'
+export const DIRECCION = 'Ac. 6 #27b-55'
 
 // URL de Google Maps para embeber el mapa de la dirección en un iframe
 // accesible (RF-10.1). Se construye desde DIRECCION para no duplicarla; el
