@@ -6,10 +6,11 @@
 // enlaces como el número visible se derivan del único punto de configuración
 // (config/sitio.ts), sin escribir el número a mano (RF-9.2, RF-9.4).
 import { Link } from 'react-router-dom'
+import { m } from 'framer-motion'
 import { MessageCircle, Phone } from 'lucide-react'
 import { SeccionEncabezado } from './SeccionEncabezado'
 import { urlWhatsApp, urlLlamada, NUMERO_CONTACTO_MOSTRADO } from '../../config/sitio'
-import { useAparecerAlEntrar } from '../../hooks/useAparecerAlEntrar'
+import { useRevelar } from '../../hooks/useRevelar'
 import './inicio.css'
 
 interface CTASectionProps {
@@ -17,17 +18,16 @@ interface CTASectionProps {
 }
 
 export function CTASection({ id = 'cta-final' }: CTASectionProps) {
-  const { ref, visible } = useAparecerAlEntrar<HTMLElement>()
+  const revelarEncabezado = useRevelar()
+  const revelarAcciones = useRevelar({ retraso: 0.1 })
 
   return (
-    <section
-      ref={ref}
-      className={`seccion seccion--cta revelar${visible ? ' revelar--visible' : ''}`}
-      aria-labelledby={id}
-    >
+    <section className="seccion seccion--cta" aria-labelledby={id}>
       <span className="cta__patron" aria-hidden="true" />
-      <SeccionEncabezado id={id} nivel={2} titulo="Solicita tu servicio" />
-      <div className="cta__acciones">
+      <m.div {...revelarEncabezado}>
+        <SeccionEncabezado id={id} nivel={2} titulo="Solicita tu servicio" />
+      </m.div>
+      <m.div className="cta__acciones" {...revelarAcciones}>
         <Link to="/solicitar" className="cta__accion cta__accion--principal">
           Solicitar un servicio
         </Link>
@@ -50,7 +50,7 @@ export function CTASection({ id = 'cta-final' }: CTASectionProps) {
             Llamar al <span className="cta__numero">{NUMERO_CONTACTO_MOSTRADO}</span>
           </a>
         </div>
-      </div>
+      </m.div>
     </section>
   )
 }

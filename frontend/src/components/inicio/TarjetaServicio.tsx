@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
+import { m } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
+import { useRevelar } from '../../hooks/useRevelar'
 import './inicio.css'
 
 interface TarjetaServicioProps {
@@ -11,6 +13,7 @@ interface TarjetaServicioProps {
   to?: string                     // OPCIONAL: si se indica, la tarjeta se renderiza como enlace (interactiva, con elevación); si no, es informativa (RF-3.3)
   nivel?: 2 | 3                   // por defecto 3; el hero pasa 2 para no saltar niveles tras el h1 (RNF-4)
   icono?: LucideIcon              // icono decorativo (aria-hidden)
+  claseExtra?: string             // clase opcional para variantes de presentación
 }
 
 export function TarjetaServicio({
@@ -22,6 +25,7 @@ export function TarjetaServicio({
   to,
   nivel = 3,
   icono: Icono,
+  claseExtra,
 }: TarjetaServicioProps) {
   const clases = ['tarjeta']
   if (variante === 'hero') {
@@ -32,11 +36,15 @@ export function TarjetaServicio({
   if (to) {
     clases.push('tarjeta--interactiva')
   }
-  if (animada) {
-    clases.push('tarjeta--animada')
+  if (claseExtra) {
+    clases.push(claseExtra)
   }
 
   const className = clases.join(' ')
+  const revelar = useRevelar({
+    direccion: 'arriba',
+    retraso: (indice ?? 0) * 0.07,
+  })
 
   const Encabezado = nivel === 2 ? 'h2' : 'h3'
 
@@ -52,22 +60,21 @@ export function TarjetaServicio({
     </>
   )
 
-  const estilo =
-    animada && indice !== undefined ? { animationDelay: `${indice * 90}ms` } : undefined
+  const movimiento = animada ? revelar : {}
 
   if (to) {
     return (
-      <article className={className} style={estilo}>
+      <m.article className={className} {...movimiento}>
         <Link to={to} className="tarjeta__enlace">
           {contenido}
         </Link>
-      </article>
+      </m.article>
     )
   }
 
   return (
-    <article className={className} style={estilo}>
+    <m.article className={className} {...movimiento}>
       {contenido}
-    </article>
+    </m.article>
   )
 }

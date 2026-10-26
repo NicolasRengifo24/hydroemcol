@@ -33,37 +33,38 @@ export interface ImagenFolleto {
   alt: string;
 }
 
-// PROVISIONAL (RF-2.1): mensaje principal del hero.
-// Síntesis de las descripciones ya aprobadas de las tres tarjetas (RF-2.4–2.6).
-// Pendiente de confirmación del cliente; se cambia aquí y en ningún otro sitio.
+// Mensaje principal del hero actualizado por solicitud del usuario: refuerza
+// la venta de repuestos y el banco de pruebas, sin mencionar sistemas
+// electrohidráulicos.
 export const MENSAJE_HERO =
-  "Soluciones hidráulicas y electrohidráulicas para una operación que no se detiene";
+  "Venta de repuestos hidráulicos y banco de pruebas para una operación que no se detiene";
 
-// Las tres tarjetas del hero (RF-2.3). Títulos y descripciones literales de
-// RF-2.4, RF-2.5 y RF-2.6 de la spec.
+// Las tres tarjetas del hero. Acompañan el enfoque del mensaje principal:
+// servicio hidráulico, repuestos y banco de pruebas.
 export const TARJETAS_HERO: TarjetaServicio[] = [
   {
-    titulo: "Servicio técnico hidráulico y electrohidráulico",
+    titulo: "Servicio técnico hidráulico",
     descripcion: "diagnóstico, reparación y pruebas en banco",
   },
   {
     titulo: "Suministro de repuestos e importación sobre pedido",
-    descripcion: "bombas, motores, cilindros, válvulas, orbitroles",
+    descripcion: "bombas, motores, válvulas, orbitroles y componentes especiales",
   },
   {
-    titulo: "Implementación de sistemas electrohidráulicos a medida",
+    titulo: "Banco de pruebas",
     descripcion:
-      "control proporcional, control de marcha y velocidades, asesoría e implementación",
+      "motor de 190 caballos de fuerza e instrumentación de precisión",
   },
 ];
 
-// Los cuatro bloques de productos y servicios del folleto, en el orden fijo de
-// RF-4.1 (RF-4.4). Títulos y descripciones literales de RF-4.1.
+// Bloques de productos y servicios. La tarjeta de repuestos se actualizó con el
+// enfoque de distribución mayorista solicitado por el usuario; la tarjeta de
+// implementación de sistemas se retiró por decisión del mismo usuario.
 export const SERVICIOS_DESTACADOS: ServicioDestacado[] = [
   {
     titulo: "Suministro de Repuestos",
     descripcion:
-      "repuestos de excelente calidad para bombas y motores hidráulicos.",
+      "Distribución mayorista de repuestos OEM (fabricante original) para todas las marcas, a nivel nacional, como importadores directos.",
   },
   {
     titulo: "Importación Sobre Pedido",
@@ -75,21 +76,14 @@ export const SERVICIOS_DESTACADOS: ServicioDestacado[] = [
     descripcion:
       "servicio en sistemas eléctricos de mando ligados a la hidráulica: control proporcional, control de marcha y velocidades, combinaciones valvulares y sistemas sensorizados.",
   },
-  {
-    titulo: "Implementación de sistemas",
-    descripcion:
-      "asesoría y ejecución de sistemas electrohidráulicos a la medida, por sustitución de un sistema obsoleto o por creación desde cero.",
-  },
 ];
 
-// Componentes que atiende la empresa, según RF-5.1. Se usan las denominaciones
-// del folleto/spec; no se añaden componentes nuevos.
+// Componentes que atiende la empresa. Por solicitud del usuario se retiraron
+// cilindros y controles de esta lista.
 export const COMPONENTES_ATENDIDOS: string[] = [
-  "Cilindros",
   "Bombas",
   "Motores",
   "Orbitroles",
-  "Controles",
   "Válvulas",
   "Otros componentes hidráulicos y electrohidráulicos",
 ];
@@ -104,6 +98,30 @@ export const CAPACIDADES_TECNICAS: string[] = [
   "Suministro de repuestos para bombas y motores hidráulicos",
   "Importación sobre pedido de repuestos no comunes o de referencias especiales",
   "Asesoría e implementación de sistemas electrohidráulicos a medida",
+];
+
+export interface DatoBancoPruebas {
+  etiqueta: string;
+  valor?: string;
+}
+
+// Características del banco de pruebas confirmadas por el usuario. Se muestran
+// en el hero tecnológico que precede a los videos del banco.
+export const TITULO_BANCO_PRUEBAS =
+  "Potencia e instrumentación para pruebas en condiciones reales";
+
+export const TEXTO_BANCO_PRUEBAS =
+  "Medimos presión, caudal, temperatura, revoluciones y respuesta eléctrica con instrumentación de precisión.";
+
+export const DATOS_BANCO_PRUEBAS: DatoBancoPruebas[] = [
+  { valor: "190 HP", etiqueta: "Motor del banco" },
+  { etiqueta: "Manómetros digitales" },
+  { etiqueta: "Flujómetros por ultrasonido" },
+  { etiqueta: "Osciloscopio" },
+  { etiqueta: "Revoluciones reales de trabajo" },
+  { etiqueta: "Pruebas a altas temperaturas" },
+  { etiqueta: "Fuente de voltaje DC" },
+  { etiqueta: "Sistema de regulación de presiones" },
 ];
 
 // Las 14 marcas de RF-5.5, en ese orden, usando los logotipos disponibles en

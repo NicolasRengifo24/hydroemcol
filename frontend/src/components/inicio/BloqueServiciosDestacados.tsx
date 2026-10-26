@@ -1,13 +1,14 @@
-import { Cog, Factory, Ship, Zap } from "lucide-react";
-import { SeccionEncabezado } from "./SeccionEncabezado";
+import { Cog, Ship, Zap } from "lucide-react";
+import { m } from "framer-motion";
 import { TarjetaServicio } from "./TarjetaServicio";
+import { SeccionEncabezado } from "./SeccionEncabezado";
 import type { ServicioDestacado } from "./contenido";
 import { SERVICIOS_DESTACADOS } from "./contenido";
-import { useAparecerAlEntrar } from "../../hooks/useAparecerAlEntrar";
+import { useRevelar } from "../../hooks/useRevelar";
 import "./inicio.css";
 
-// Iconos decorativos de los cuatro bloques, en el orden de SERVICIOS_DESTACADOS.
-const ICONOS = [Cog, Ship, Zap, Factory];
+// Iconos decorativos de los bloques, en el orden de SERVICIOS_DESTACADOS.
+const ICONOS = [Cog, Ship, Zap];
 
 interface BloqueServiciosDestacadosProps {
   servicios?: ServicioDestacado[];
@@ -18,36 +19,54 @@ export function BloqueServiciosDestacados({
   servicios = SERVICIOS_DESTACADOS,
   id = "servicios-destacados",
 }: BloqueServiciosDestacadosProps) {
-  const { ref, visible } = useAparecerAlEntrar<HTMLElement>();
+  const revelarCabecera = useRevelar({ direccion: "arriba" });
 
   return (
-    <section
-      ref={ref}
-      className={`seccion seccion--servicios revelar${visible ? " revelar--visible" : ""}`}
-      aria-labelledby={id}
-    >
-      <SeccionEncabezado id={id} nivel={2} titulo="Productos y servicios" />
+    <section className="seccion seccion--servicios" aria-labelledby={id}>
+      <m.div className="servicios-destacados__cabecera" {...revelarCabecera}>
+        <div>
+          <p className="servicios-destacados__eyebrow">
+            Repuestos · Importación · Servicio técnico
+          </p>
+          <SeccionEncabezado
+            id={id}
+            nivel={2}
+            titulo="Productos y servicios"
+            descripcion="Repuestos OEM, importación sobre pedido y servicio técnico electrohidráulico para mantener tu operación activa."
+          />
+        </div>
+        <ul className="servicios-destacados__datos" aria-hidden="true">
+          <li>
+            <strong>03</strong>
+            <span>Líneas integradas</span>
+          </li>
+          <li>
+            <strong>OEM</strong>
+            <span>Repuestos originales</span>
+          </li>
+          <li>
+            <strong>Nacional</strong>
+            <span>Cobertura</span>
+          </li>
+        </ul>
+      </m.div>
       <div className="rejilla rejilla--destacados rejilla--bento">
         {servicios.map((servicio, i) => {
           const Icono = ICONOS[i];
-          return servicio.titulo === "Importación Sobre Pedido" ? (
-            <article
-              className="tarjeta tarjeta--destacado tarjeta--importacion"
-              key={servicio.titulo}
-            >
-              <span className="tarjeta__icono" aria-hidden="true">
-                <Icono size={22} strokeWidth={1.9} />
-              </span>
-              <h3 className="tarjeta__titulo">{servicio.titulo}</h3>
-              <p className="tarjeta__descripcion">{servicio.descripcion}</p>
-            </article>
-          ) : (
+          return (
             <TarjetaServicio
               key={servicio.titulo}
               titulo={servicio.titulo}
               descripcion={servicio.descripcion}
               variante="destacado"
+              animada
+              indice={i}
               icono={Icono}
+              claseExtra={
+                servicio.titulo === "Importación Sobre Pedido"
+                  ? "tarjeta--importacion"
+                  : undefined
+              }
             />
           );
         })}

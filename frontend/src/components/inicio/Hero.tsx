@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Cpu, Package, Wrench } from 'lucide-react'
+import { m } from 'framer-motion'
+import { Gauge, Package, Wrench } from 'lucide-react'
 import { TarjetaServicio } from './TarjetaServicio'
 import { MENSAJE_HERO, TARJETAS_HERO } from './contenido'
+import { useRevelar } from '../../hooks/useRevelar'
 import './inicio.css'
 
 // Iconos de las tres tarjetas del hero, en el mismo orden que TARJETAS_HERO.
-const ICONOS_HERO = [Wrench, Package, Cpu]
+const ICONOS_HERO = [Wrench, Package, Gauge]
 
 interface HeroProps {
   ctaTexto: string
@@ -16,6 +18,7 @@ interface HeroProps {
 // Hero de la página de inicio (RF-2): video de fondo del banco de pruebas, velo de
 // color de marca, mensaje principal, llamada a la acción y tres tarjetas de vidrio.
 export function Hero({ ctaTexto, ctaTo }: HeroProps) {
+  const revelarTexto = useRevelar({ direccion: 'izquierda', distancia: 20 })
   const [reducirMovimiento, setReducirMovimiento] = useState(() =>
     typeof window !== 'undefined'
       ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -48,7 +51,7 @@ export function Hero({ ctaTexto, ctaTo }: HeroProps) {
       <div className="hero__velo" aria-hidden="true" />
 
       <div className="hero__contenido">
-        <div className="hero__texto">
+        <m.div className="hero__texto" {...revelarTexto}>
           <p className="hero__eyebrow">Hidroemcol · Ingeniería y servicio técnico</p>
           <h1 id="inicio-hero" className="hero__mensaje">
             {MENSAJE_HERO}
@@ -56,7 +59,7 @@ export function Hero({ ctaTexto, ctaTo }: HeroProps) {
           <Link to={ctaTo} className="hero__cta">
             {ctaTexto}
           </Link>
-        </div>
+        </m.div>
 
         <div className="hero__tarjetas">
           {TARJETAS_HERO.map((tarjeta, i) => (

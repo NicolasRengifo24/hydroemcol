@@ -461,14 +461,14 @@ class ComponenteAdmin(admin.ModelAdmin):
              ), 'fields': ('accion', 'nuevo_estado', 'comentario_accion')}),
         )
 
+
     def get_readonly_fields(self, request, obj=None):
-        if obj is None:
-            return ()
-        return (
+        fields = (
             'estado', 'fase', 'trabajo_iniciado', 'fecha_inicio_trabajo',
-            'fecha_finalizacion', 'motivo_finalizacion',
-            'motivo_espera',
+            'fecha_finalizacion', 'motivo_finalizacion', 'motivo_espera',
         )
+        return fields
+
 
     def get_form(self, request, obj=None, **kwargs):
         class ComponenteForm(forms.ModelForm):

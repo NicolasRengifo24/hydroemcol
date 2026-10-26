@@ -1,68 +1,73 @@
+import { Link } from "react-router-dom";
+import { ArrowRight, BadgeCheck, Gauge, MapPin, Ship, Wrench } from "lucide-react";
 import "./Soluciones.css";
 
 const productos = [
   {
     src: "/img/soluciones/productos-1.jpeg",
-    alt: "Kit de reparación de componentes de una bomba hidráulica.",
+    alt: "Kit de reparación de bomba hidráulica con pistones, placas y sellos.",
     titulo: "Kits de reparación",
     texto:
-      "Componentes organizados para recuperar el rendimiento de equipos hidráulicos.",
+      "Kits con bloque de cilindros, pistones, placas de válvulas, platos de empuje y sellos para recuperar el rendimiento de bombas hidráulicas.",
   },
   {
     src: "/img/soluciones/productos-2.jpeg",
-    alt: "Componentes metálicos y conjuntos de una bomba hidráulica.",
+    alt: "Bloques de cilindros, placas de válvulas y pistones de una bomba hidráulica.",
     titulo: "Componentes hidráulicos",
-    texto: "Repuestos y conjuntos para mantenimiento de sistemas hidráulicos.",
+    texto:
+      "Bloques de cilindros, placas de válvulas, pistones y conjuntos para mantenimiento de sistemas hidráulicos.",
   },
   {
     src: "/img/soluciones/productos-3.jpeg",
-    alt: "Conjunto desmontado de piezas para reparación hidráulica.",
+    alt: "Conjunto de piezas para reparación hidráulica y búsqueda de referencias especiales.",
     titulo: "Repuestos sobre pedido",
     texto:
-      "Búsqueda e importación de referencias especiales para tu operación.",
+      "Búsqueda e importación de referencias especiales y repuestos no comunes para tu operación.",
   },
 ];
 
 const servicios = [
   {
     src: "/img/soluciones/banco-pruebas.jpeg",
-    alt: "Componente hidráulico instalado en un banco de pruebas.",
-    titulo: "Banco de pruebas",
+    alt: "Bomba hidráulica CAT 236 instalada en el banco de pruebas.",
+    titulo: "Reparación de bomba CAT 236",
     texto:
-      "Evaluación técnica de componentes hidráulicos y electrohidráulicos.",
+      "Reparación integral y prueba en banco con verificación de flujo y presión para validar el desempeño de la bomba bajo condiciones controladas.",
   },
   {
     src: "/img/soluciones/banco-pruebas-2.jpeg",
-    alt: "Banco de pruebas hidráulico con equipo conectado.",
-    titulo: "Diagnóstico técnico",
-    texto: "Revisión visual y funcional para orientar la reparación adecuada.",
+    alt: "Bomba hidráulica Itachi 70 durante su prueba en banco.",
+    titulo: "Reparación de bomba Itachi 70",
+    texto:
+      "Reparación y prueba en banco de la bomba Itachi 70, incluyendo corrección de regulación y calado del motor para recuperar su operación.",
   },
   {
     src: "/img/soluciones/grua-telescopica-mantenimiento.jpeg",
-    alt: "Mantenimiento de una grúa telescópica.",
-    titulo: "Mantenimiento de maquinaria",
+    alt: "Componentes de grúa telescópica durante su desarme técnico.",
+    titulo: "Desarme de grúa telescópica",
     texto:
-      "Atención técnica para equipos de trabajo pesado y sus sistemas hidráulicos.",
+      "Desarme técnico de grúa telescópica para traslado helicoportado en el Putumayo, con preparación de componentes para transporte en condiciones exigentes.",
   },
   {
     src: "/img/soluciones/mantenimiento-finisher.jpeg",
-    alt: "Personal realizando mantenimiento a una máquina pavimentadora.",
-    titulo: "Soporte en campo",
+    alt: "Soporte técnico a una finisher de asfalto en campo.",
+    titulo: "Soporte técnico a finisher de asfalto",
     texto:
-      "Acompañamiento técnico en equipos que mantienen activa la operación.",
+      "Mantenimiento y soporte en campo a finisher de asfalto en Palmira, Valle, enfocado en restablecer la confiabilidad del equipo y la continuidad de la operación.",
   },
   {
     src: "/img/soluciones/mantenimiento-hidroituango.jpeg",
-    alt: "Vista de una obra de infraestructura en Hidroituango.",
-    titulo: "Proyectos industriales",
+    alt: "Equipos y obra de infraestructura en Hidroituango.",
+    titulo: "Mantenimiento de equipos en Hidroituango",
     texto:
-      "Experiencia visual en entornos de infraestructura y operación exigente.",
+      "Soporte técnico y mantenimiento de equipos múltiples en Hidroituango, atendiendo requerimientos hidráulicos en un entorno de infraestructura de alta exigencia.",
   },
   {
     src: "/img/soluciones/relleno-juana.jpeg",
-    alt: "Maquinaria pesada trabajando en un proyecto de movimiento de tierra.",
-    titulo: "Equipos de trabajo pesado",
-    texto: "Soluciones para maquinaria que trabaja en condiciones exigentes.",
+    alt: "Excavadora durante mantenimiento en el Relleno Sanitario Doña Juana.",
+    titulo: "Mantenimiento de excavadora en Doña Juana",
+    texto:
+      "Mantenimiento y soporte técnico de excavadora en el Relleno Sanitario Doña Juana, con atención a sistemas hidráulicos bajo condiciones operativas exigentes.",
   },
 ];
 
@@ -94,6 +99,43 @@ function SolucionCard({
   );
 }
 
+function ProductoCard({
+  src,
+  alt,
+  titulo,
+  texto,
+  numero,
+  destacado = false,
+}: {
+  src: string;
+  alt: string;
+  titulo: string;
+  texto: string;
+  numero: string;
+  destacado?: boolean;
+}) {
+  return (
+    <article
+      className={`producto-card${destacado ? " producto-card--destacado" : ""}`}
+    >
+      <img
+        className="producto-card__imagen"
+        src={src}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+      />
+      <div className="producto-card__contenido">
+        <span className="producto-card__numero" aria-hidden="true">
+          {numero}
+        </span>
+        <h3 className="producto-card__titulo">{titulo}</h3>
+        <p className="producto-card__texto">{texto}</p>
+      </div>
+    </article>
+  );
+}
+
 function Soluciones() {
   return (
     <div className="soluciones-page">
@@ -113,23 +155,57 @@ function Soluciones() {
         </div>
       </section>
 
-      <section
-        className="soluciones-section"
-        aria-labelledby="productos-titulo"
-      >
-        <div className="soluciones-section__encabezado">
-          <p className="soluciones-section__eyebrow">Productos</p>
-          <h2 id="productos-titulo" className="soluciones-section__titulo">
-            Repuestos y componentes hidráulicos
-          </h2>
-          <p className="soluciones-section__intro">
-            Kits, piezas y referencias especiales para diagnóstico,
-            mantenimiento y reparación de equipos hidráulicos.
-          </p>
-        </div>
-        <div className="soluciones-galeria soluciones-galeria--productos">
-          {productos.map((producto) => (
-            <SolucionCard key={producto.src} {...producto} />
+      <section className="soluciones-productos" aria-labelledby="productos-titulo">
+        <div className="soluciones-productos__bento">
+          <div className="soluciones-productos__intro">
+            <p className="soluciones-section__eyebrow soluciones-productos__eyebrow">
+              Venta de repuestos · Línea principal
+            </p>
+            <h2
+              id="productos-titulo"
+              className="soluciones-section__titulo soluciones-productos__titulo"
+            >
+              Repuestos y componentes hidráulicos
+            </h2>
+            <p className="soluciones-productos__texto">
+              Kits, piezas y referencias especiales para diagnóstico,
+              mantenimiento y reparación de equipos hidráulicos. Suministro de
+              repuestos OEM y acompañamiento técnico para mantener la operación
+              activa.
+            </p>
+            <ul className="soluciones-productos__beneficios">
+              <li>
+                <BadgeCheck size={18} strokeWidth={2} aria-hidden="true" />
+                <span>
+                  <strong>Repuestos OEM</strong> para las principales marcas.
+                </span>
+              </li>
+              <li>
+                <Ship size={18} strokeWidth={2} aria-hidden="true" />
+                <span>
+                  <strong>Importación sobre pedido</strong> de referencias
+                  especiales.
+                </span>
+              </li>
+              <li>
+                <MapPin size={18} strokeWidth={2} aria-hidden="true" />
+                <span>
+                  <strong>Cobertura nacional</strong> para tu operación.
+                </span>
+              </li>
+            </ul>
+            <Link className="soluciones-productos__cta" to="/solicitar">
+              Solicitar repuesto
+              <ArrowRight size={18} strokeWidth={2.2} aria-hidden="true" />
+            </Link>
+          </div>
+          {productos.map((producto, index) => (
+            <ProductoCard
+              key={producto.src}
+              {...producto}
+              numero={`0${index + 1}`}
+              destacado={index === 0}
+            />
           ))}
         </div>
       </section>
@@ -150,19 +226,35 @@ function Soluciones() {
         </div>
       </section>
 
-      <section
-        className="soluciones-section"
-        aria-labelledby="servicios-titulo"
-      >
-        <div className="soluciones-section__encabezado">
-          <p className="soluciones-section__eyebrow">Servicios</p>
-          <h2 id="servicios-titulo" className="soluciones-section__titulo">
-            Capacidad técnica en campo y taller
-          </h2>
-          <p className="soluciones-section__intro">
-            Una mirada a los equipos, entornos y tipos de trabajo donde
-            aplicamos nuestras soluciones hidráulicas.
-          </p>
+      <section className="soluciones-servicios" aria-labelledby="servicios-titulo">
+        <div className="soluciones-servicios__encabezado">
+          <div className="soluciones-section__encabezado">
+            <p className="soluciones-section__eyebrow">Servicios · Casos reales</p>
+            <h2 id="servicios-titulo" className="soluciones-section__titulo">
+              Capacidad técnica en campo y taller
+            </h2>
+            <p className="soluciones-section__intro">
+              Experiencia aplicada en reparación, prueba en banco y soporte
+              técnico de equipos hidráulicos en operaciones exigentes.
+            </p>
+          </div>
+          <ul
+            className="soluciones-servicios__capacidades"
+            aria-label="Capacidades de servicio"
+          >
+            <li>
+              <Gauge size={17} strokeWidth={2} aria-hidden="true" />
+              <span>Banco de pruebas</span>
+            </li>
+            <li>
+              <Wrench size={17} strokeWidth={2} aria-hidden="true" />
+              <span>Reparación especializada</span>
+            </li>
+            <li>
+              <MapPin size={17} strokeWidth={2} aria-hidden="true" />
+              <span>Soporte en campo</span>
+            </li>
+          </ul>
         </div>
         <div className="soluciones-galeria soluciones-galeria--servicios">
           {servicios.map((servicio) => (
