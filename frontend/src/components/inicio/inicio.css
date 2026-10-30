@@ -1037,6 +1037,7 @@ details.capacidad__bloque {
   position: relative;
   z-index: 1;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   min-width: 0;
 }
@@ -1071,10 +1072,11 @@ details.capacidad__bloque {
   color: var(--color-white);
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.65rem, 4vw, 2.8rem);
+  font-size: clamp(1.3rem, 4vw, 2.8rem);
   letter-spacing: -0.035em;
   line-height: 1.06;
   text-wrap: balance;
+  overflow-wrap: break-word;
   text-shadow: 0 4px 24px rgb(0 0 0 / 30%);
 }
 
@@ -1088,8 +1090,9 @@ details.capacidad__bloque {
 
 .banco-hero__datos {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
   gap: 0.65rem;
+  min-width: 0;
   margin: 0.5rem 0 0;
   padding: 0;
   list-style: none;
