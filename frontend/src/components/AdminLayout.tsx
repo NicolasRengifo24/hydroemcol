@@ -6,6 +6,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { cerrarSesion } from "../services/api";
+import Seo from "../seo/Seo";
 import Logo from "./brand/Logo";
 
 function AdminLayout() {
@@ -18,6 +19,11 @@ function AdminLayout() {
 
   return (
     <div className="admin-layout">
+      <Seo
+        titulo="Panel administrativo | Hydroemcol S.A.S"
+        descripcion="Acceso al panel administrativo de Hydroemcol S.A.S."
+        noindex
+      />
       <header className="admin-header">
         <div className="admin-header__marca">
           <Logo mostrarTexto sobreOscuro className="admin-header__logo" />

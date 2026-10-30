@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { Menu, MessageCircle, Phone, X } from "lucide-react";
 import Logo from "./brand/Logo";
+import Seo from "../seo/Seo";
 import {
   NUMERO_CONTACTO_MOSTRADO,
   URL_FACEBOOK,
@@ -46,6 +47,7 @@ function Layout() {
 
   return (
     <div className="layout">
+      <Seo />
       <header
         className={encabezadoEnScroll ? "header header--scrolled" : "header"}
       >

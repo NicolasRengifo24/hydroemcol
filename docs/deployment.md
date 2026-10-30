@@ -67,6 +67,62 @@ Si los sitios finales del frontend y backend son distintos, cambia explícitamen
 `AUTH_COOKIE_SAMESITE=None` y conserva `AUTH_COOKIE_SECURE=True`. No se cambia `SameSite`
 automáticamente según el origen.
 
+## SEO: cabeceras y redirecciones
+
+El frontend es una SPA. Los metadatos por ruta se actualizan en el navegador con
+`frontend/src/seo/Seo.tsx`; las páginas privadas además deben protegerse desde la
+infraestructura.
+
+### Render: cabeceras para rutas privadas
+
+En Render Dashboard, abre el Static Site del frontend y entra a **Settings > Headers**.
+Añade estas reglas:
+
+| Request Path | Header Name | Header Value |
+| --- | --- | --- |
+| `/admin` | `X-Robots-Tag` | `noindex, nofollow` |
+| `/admin/*` | `X-Robots-Tag` | `noindex, nofollow` |
+| `/seguimiento/*` | `X-Robots-Tag` | `noindex, nofollow` |
+
+No agregues `Disallow` para estas rutas en `robots.txt`: si Google no puede rastrearlas,
+tampoco puede leer el `noindex`.
+
+### Render: rewrite de la SPA
+
+En la pestaña **Redirects/Rewrites** debe existir una regla:
+
+| Source Path | Destination Path | Action |
+| --- | --- | --- |
+| `/*` | `/index.html` | `Rewrite` |
+
+No la dupliques. Las redirecciones de variantes de URL se resuelven en Cloudflare porque
+Render no aplica reglas a rutas donde ya existe un archivo, como `/index.html`.
+
+### Cloudflare: dominio canónico y barras finales
+
+En la zona `hydroemcol.com`:
+
+1. Activa **Always Use HTTPS**.
+2. En **Rules > Redirect Rules**, crea una regla para el dominio sin `www`:
+   - Nombre: `Apex a www`
+   - Expresión: `(http.host eq "hydroemcol.com")`
+   - Tipo: Dynamic
+   - Expresión de destino: `concat("https://www.hydroemcol.com", http.request.uri.path)`
+   - Código: `301`
+   - Conservar query string: activado
+3. Crea una regla para `/index.html`:
+   - Expresión: `(http.host eq "www.hydroemcol.com" and http.request.uri.path eq "/index.html")`
+   - Destino: `https://www.hydroemcol.com/`
+   - Código: `301`
+4. Crea una regla por cada ruta pública con barra final:
+   - `/soluciones/` → `https://www.hydroemcol.com/soluciones`
+   - `/nosotros/` → `https://www.hydroemcol.com/nosotros`
+   - `/solicitar/` → `https://www.hydroemcol.com/solicitar`
+   - `/seguimiento/` → `https://www.hydroemcol.com/seguimiento`
+
+Después del despliegue, verifica con `curl -I` que las variantes respondan `301` y que las
+URLs canónicas respondan `200`.
+
 ## Throttling del login
 
 El límite de cinco fallos por minuto y por IP usa el caché configurado de Django y no requiere

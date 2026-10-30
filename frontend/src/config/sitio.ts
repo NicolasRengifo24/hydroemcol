@@ -5,6 +5,9 @@
 // accesos visibles (WhatsApp y llamada) se derivan de aquí. Cambiar el valor en
 // este único punto actualiza todos los accesos a la vez.
 
+// Origen canónico del sitio público. Se usa para construir canonical y og:url.
+export const URL_SITIO = "https://www.hydroemcol.com";
+
 // Número de contacto en formato apto para enlaces (`https://wa.me/...`, `tel:`).
 // TEMPORAL de desarrollo: pendiente del número definitivo de producción (RF-9.2).
 export const NUMERO_CONTACTO = "+573138343980";

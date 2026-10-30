@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { iniciarSesion } from "../services/api";
+import Seo from "../seo/Seo";
 import Logo from "../components/brand/Logo";
 
 const AVISO_SESION =
@@ -84,6 +85,11 @@ function AdminLogin() {
       className="login-page"
       aria-label="Inicio de sesión administrativo"
     >
+      <Seo
+        titulo="Acceso administrativo | Hydroemcol S.A.S"
+        descripcion="Acceso al panel administrativo de Hydroemcol S.A.S."
+        noindex
+      />
       <section className="login-card" aria-labelledby="login-titulo">
         <Logo grande className="login-card__brand" />
         <div className="login-card__intro">
