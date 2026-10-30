@@ -24,6 +24,9 @@ media/
 staticfiles/
 *.log
 
+# ── Documentos internos (no versionar) ────────────────────
+marketing/
+
 # ── Editores / SO ──────────────────────────────────────────
 .vscode/
 .idea/
