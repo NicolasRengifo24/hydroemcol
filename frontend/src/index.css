@@ -447,6 +447,12 @@ body {
   border-left: 4px solid var(--color-danger);
 }
 
+.login-form__ayuda {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
 .login-form__submit {
   min-height: 48px;
   padding: 0.7rem 1rem;

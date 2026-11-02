@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useDashboardAdministrativo } from "../hooks/useAdministrativo";
 import type { CodigoEstadoServicio } from "../services/api";
 import { mensajeDeError } from "../services/errores";
+import { rutaAdmin } from "../config/rutasAdmin";
 
 const estados: Array<{ codigo: CodigoEstadoServicio; etiqueta: string }> = [
   { codigo: "SOLICITADO", etiqueta: "Solicitados" },
@@ -34,7 +35,7 @@ function GraficaEstados({
         return (
           <Link
             key={estado.codigo}
-            to={`/admin/servicios?estado=${estado.codigo}`}
+            to={`${rutaAdmin("servicios")}?estado=${estado.codigo}`}
             className="admin-status-chart__row"
             role="listitem"
           >
@@ -67,7 +68,7 @@ function AdminIndicadores() {
             atención.
           </p>
         </div>
-        <Link className="admin-button" to="/admin/servicios">
+        <Link className="admin-button" to={rutaAdmin("servicios")}>
           Ver servicios
         </Link>
       </div>
@@ -105,7 +106,7 @@ function AdminIndicadores() {
             <div className="admin-metrics">
               <Link
                 className="admin-metric admin-metric--total"
-                to="/admin/servicios"
+                to={rutaAdmin("servicios")}
               >
                 <span>Total activos</span>
                 <strong>{consulta.data.total_activos}</strong>
@@ -114,7 +115,7 @@ function AdminIndicadores() {
                 <Link
                   className="admin-metric"
                   key={estado.codigo}
-                  to={`/admin/servicios?estado=${estado.codigo}`}
+                  to={`${rutaAdmin("servicios")}?estado=${estado.codigo}`}
                 >
                   <span>{estado.etiqueta}</span>
                   <strong>

@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { Menu, MessageCircle, Phone, X } from "lucide-react";
 import Logo from "./brand/Logo";
 import Seo from "../seo/Seo";
+import AvisoServicio from "./AvisoServicio";
 import {
   NUMERO_CONTACTO_MOSTRADO,
   URL_FACEBOOK,
@@ -174,6 +175,7 @@ function Layout() {
 
         <p className="footer__copyright">© {ANIO_ACTUAL} Hydroemcol S.A.S.</p>
       </footer>
+      <AvisoServicio variante="banner" />
     </div>
   );
 }

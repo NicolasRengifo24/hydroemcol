@@ -22,7 +22,6 @@ from config.health import healthz
 from usuarios.views import CsrfView, LoginView, LogoutView, RefreshView
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
     path('healthz/', healthz, name='healthz'),
     # Autenticación administrativa: el refresh solo viaja en cookie.
     path('api/csrf/', CsrfView.as_view(), name='csrf'),
@@ -33,7 +32,10 @@ urlpatterns = [
     path('api/', include('servicios.urls')),
 ]
 
+# El admin de Django solo se publica en desarrollo. En producción el panel
+# administrativo propio del frontend es la única interfaz de operación.
 # Servir las fotografías subidas (media local) solo en desarrollo.
 # En producción el almacenamiento (Cloudflare) entrega los archivos.
 if settings.DEBUG:
+    urlpatterns += [path('admin/', admin.site.urls)]
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

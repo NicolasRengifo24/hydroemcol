@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useDashboardAdministrativo } from "../hooks/useAdministrativo";
 import type { ServicioResumenAdministrativo } from "../services/api";
 import { mensajeDeError } from "../services/errores";
+import { rutaAdmin } from "../config/rutasAdmin";
 
 function fechaLegible(fecha: string) {
   return new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(
@@ -28,7 +29,7 @@ function ServicioResumen({
   servicio: ServicioResumenAdministrativo;
 }) {
   return (
-    <Link className="admin-list-item" to={`/admin/servicios/${servicio.id}`}>
+    <Link className="admin-list-item" to={rutaAdmin("servicios", String(servicio.id))}>
       <span>
         <strong>{servicio.codigo}</strong>
         <small>
@@ -61,7 +62,7 @@ function Admin() {
             técnico y administrativo.
           </p>
         </div>
-        <Link className="admin-button" to="/admin/servicios">
+        <Link className="admin-button" to={rutaAdmin("servicios")}>
           Ver todos los servicios
         </Link>
       </div>
@@ -93,22 +94,22 @@ function Admin() {
               <span className="admin-section-note">Datos en tiempo real</span>
             </div>
             <div className="admin-metrics admin-metrics--overview">
-              <Link className="admin-metric admin-metric--total" to="/admin/servicios">
+              <Link className="admin-metric admin-metric--total" to={rutaAdmin("servicios")}>
                 <span>Servicios activos</span>
                 <strong>{consulta.data.total_activos}</strong>
                 <small>Ver cartera completa</small>
               </Link>
-              <Link className="admin-metric" to="/admin/servicios?estado=SOLICITADO">
+              <Link className="admin-metric" to={`${rutaAdmin("servicios")}?estado=SOLICITADO`}>
                 <span>Nuevas solicitudes</span>
                 <strong>{consulta.data.contadores.SOLICITADO ?? 0}</strong>
                 <small>Requieren primera revisión</small>
               </Link>
-              <Link className="admin-metric" to="/admin/servicios?estado=EN_CURSO">
+              <Link className="admin-metric" to={`${rutaAdmin("servicios")}?estado=EN_CURSO`}>
                 <span>En curso</span>
                 <strong>{consulta.data.contadores.EN_CURSO ?? 0}</strong>
                 <small>Atención actualmente activa</small>
               </Link>
-              <Link className="admin-metric admin-metric--attention" to="/admin/servicios">
+              <Link className="admin-metric admin-metric--attention" to={rutaAdmin("servicios")}>
                 <span>Prioridad de atención</span>
                 <strong>{consulta.data.pendientes_atencion.length}</strong>
                 <small>Casos que necesitan seguimiento</small>

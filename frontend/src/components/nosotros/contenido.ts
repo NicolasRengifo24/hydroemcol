@@ -35,7 +35,7 @@ export const SUBTITULO_HERO_NOSOTROS =
 // de "Quiénes somos" tal como está fijado en la spec. No reescribir ni ampliar
 // (riesgo R1 del plan). No afirma datos de negocio no verificados (RF-3.2).
 export const TEXTO_QUIENES_SOMOS =
-  "Hidroemcol es una empresa técnica e industrial especializada en sistemas hidráulicos y " +
+  "Hydroemcol es una empresa técnica e industrial especializada en sistemas hidráulicos y " +
   "electrohidráulicos. Nos dedicamos a brindar el mejor servicio técnico y a suministrar " +
   "repuestos de calidad, con experiencia, responsabilidad y rapidez, para asegurar que los " +
   "equipos de nuestros clientes mantengan su funcionamiento normal durante el desarrollo de " +
@@ -101,5 +101,5 @@ export const CITA_BRAD_HENRY: { texto: string; autor: string } = {
 // detalles del contenido que no estén aprobados.
 export const HERO_NOSOTROS: ImagenHero = {
   src: "/img/hydroemcol-nosotros.png",
-  alt: "Imagen de presentación de Hidroemcol, empresa técnica e industrial especializada en sistemas hidráulicos y electrohidráulicos.",
+  alt: "Imagen de presentación de Hydroemcol, empresa técnica e industrial especializada en sistemas hidráulicos y electrohidráulicos.",
 };

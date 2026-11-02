@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { Navigate, createBrowserRouter } from "react-router-dom";
 import Layout from "./components/Layout";
 import Admin from "./pages/Admin";
 import AdminIndicadores from "./pages/AdminIndicadores";
@@ -8,11 +8,13 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminLayout from "./components/AdminLayout";
 import RutaAdministrativaProtegida from "./components/RutaAdministrativaProtegida";
 import Inicio from "./pages/Inicio";
+import NoEncontrada from "./pages/NoEncontrada";
 import Nosotros from "./pages/Nosotros";
 import Seguimiento from "./pages/Seguimiento";
 import SeguimientoCodigo from "./pages/SeguimientoCodigo";
 import SolicitarServicio from "./pages/SolicitarServicio";
 import Soluciones from "./pages/Soluciones";
+import { RUTA_ADMIN_RELATIVA } from "./config/rutasAdmin";
 
 export const router = createBrowserRouter([
   {
@@ -27,19 +29,22 @@ export const router = createBrowserRouter([
       { path: "seguimiento/:token", element: <Seguimiento /> },
     ],
   },
-  { path: "admin/login", element: <AdminLogin /> },
+  { path: `${RUTA_ADMIN_RELATIVA}/login`, element: <AdminLogin /> },
   {
     element: <RutaAdministrativaProtegida />,
     children: [
       {
         element: <AdminLayout />,
         children: [
-          { path: "admin", element: <Admin /> },
-          { path: "admin/indicadores", element: <AdminIndicadores /> },
-          { path: "admin/servicios", element: <AdminServicios /> },
-          { path: "admin/servicios/:id", element: <AdminServicioDetalle /> },
+          { path: RUTA_ADMIN_RELATIVA, element: <Admin /> },
+          { path: `${RUTA_ADMIN_RELATIVA}/indicadores`, element: <AdminIndicadores /> },
+          { path: `${RUTA_ADMIN_RELATIVA}/servicios`, element: <AdminServicios /> },
+          { path: `${RUTA_ADMIN_RELATIVA}/servicios/:id`, element: <AdminServicioDetalle /> },
         ],
       },
     ],
   },
+  { path: "admin", element: <Navigate to="/" replace /> },
+  { path: "admin/*", element: <Navigate to="/" replace /> },
+  { path: "*", element: <NoEncontrada /> },
 ]);

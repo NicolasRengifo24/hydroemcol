@@ -1,6 +1,8 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCrearSolicitud } from '../hooks/useCrearSolicitud'
+import { useDisponibilidadApi } from '../hooks/useDisponibilidadApi'
+import { useEsperaProlongada } from '../hooks/useEsperaProlongada'
 import type { SolicitudPublicaPayload } from '../services/solicitudes'
 import './SolicitarServicio.css'
 
@@ -91,6 +93,9 @@ function parsearErrores(err: unknown): { general: string | null; campos: Record<
 
 function SolicitarServicio() {
   const { crear, isLoading, reset } = useCrearSolicitud()
+  const { estado } = useDisponibilidadApi()
+  const sinServicio = estado === 'no_disponible'
+  const esperaProlongada = useEsperaProlongada(isLoading)
   const [form, setForm] = useState({
     nombre_cliente: '',
     empresa: '',
@@ -210,6 +215,7 @@ function SolicitarServicio() {
   }
 
   async function enviar(confirmar: boolean) {
+    if (sinServicio) return
     setExito(null)
     limpiarErrores()
 
@@ -328,7 +334,7 @@ function SolicitarServicio() {
               type="button"
               className="solicitud-btn solicitud-btn-primary"
               onClick={() => void enviar(true)}
-              disabled={isLoading}
+              disabled={isLoading || sinServicio}
             >
               {isLoading ? 'Enviando…' : 'Continuar'}
             </button>
@@ -347,6 +353,15 @@ function SolicitarServicio() {
       {errorGeneral && !exito && (
         <div className="solicitud-panel solicitud-panel-error" role="alert">
           <p>{errorGeneral}</p>
+        </div>
+      )}
+
+      {sinServicio && !exito && (
+        <div className="solicitud-panel solicitud-panel-warning" role="status">
+          <p>
+            El servicio no está disponible en este momento. Puedes completar el
+            formulario, pero el envío se habilitará cuando se restablezca.
+          </p>
         </div>
       )}
 
@@ -703,8 +718,18 @@ function SolicitarServicio() {
             </label>
           </fieldset>
 
+          {isLoading && esperaProlongada && (
+            <p className="solicitud-ayuda" role="status">
+              El servicio puede tardar hasta un minuto en iniciar…
+            </p>
+          )}
+
           <div className="solicitud-actions">
-            <button type="submit" className="solicitud-btn solicitud-btn-primary" disabled={isLoading}>
+            <button
+              type="submit"
+              className="solicitud-btn solicitud-btn-primary"
+              disabled={isLoading || sinServicio}
+            >
               {isLoading ? 'Enviando solicitud…' : 'Enviar solicitud'}
             </button>
           </div>

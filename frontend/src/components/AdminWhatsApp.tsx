@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useMensajesWhatsapp, useServicioAdministrativo } from '../hooks/useAdministrativo'
 import type { MensajeWhatsApp } from '../services/api'
 import { abrirWhatsApp, construirUrlWhatsApp } from '../services/whatsapp'
+import { RUTA_ADMIN_LOGIN } from '../config/rutasAdmin'
 
 const AVISO_VACIO = 'Escribe el mensaje antes de abrir WhatsApp.'
 const AVISO_BLOQUEO = 'El navegador bloqueó la ventana de WhatsApp. Permite las ventanas emergentes para este sitio y pulsa de nuevo el botón.'
@@ -103,7 +104,7 @@ function AdminWhatsApp({ servicioId }: { servicioId: number }) {
     if (sesionRedirigida.current || (!errorEs401(consulta.error) && !errorEs401(servicio.error))) return
     sesionRedirigida.current = true
     setSesionCaducada(true)
-    const temporizador = window.setTimeout(() => navigate('/admin/login', {
+    const temporizador = window.setTimeout(() => navigate(RUTA_ADMIN_LOGIN, {
       replace: true,
       state: { from: location, aviso: AVISO_SESION },
     }), 350)

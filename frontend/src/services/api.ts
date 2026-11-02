@@ -1,3 +1,5 @@
+import { marcarDisponible, marcarNoDisponible } from './disponibilidad'
+
 export interface RequestOptions extends RequestInit {
   idempotencyKey?: string
 }
@@ -13,6 +15,7 @@ export type ErrorApi = Error & {
   status: number
   data: unknown
   requiereRecarga?: boolean
+  infraestructura?: boolean
 }
 type OyenteSesion = (estado: EstadoSesion) => void
 type RequestOptionsInternas = RequestOptions & { _reintentoSesion?: boolean }
@@ -218,13 +221,38 @@ export async function apiRequest<T = unknown>(
     headers.set('Idempotency-Key', idempotencyKey)
   }
 
-  const res = await fetch(urlApi(endpoint), {
-    ...rest,
-    credentials: 'include',
-    headers,
-  })
+  let res: Response
+  try {
+    res = await fetch(urlApi(endpoint), {
+      ...rest,
+      credentials: 'include',
+      headers,
+    })
+  } catch (causa) {
+    marcarNoDisponible()
+    const error = new Error(MENSAJE_SERVIDOR_NO_DISPONIBLE, {
+      cause: causa,
+    }) as ErrorApi
+    error.status = 0
+    error.data = { detail: MENSAJE_SERVIDOR_NO_DISPONIBLE }
+    error.infraestructura = true
+    throw error
+  }
 
   if (!res.ok) {
+    const tipoContenido = res.headers.get('content-type') ?? ''
+    const esJson = tipoContenido.includes('application/json')
+    // 502/504 y los 5xx que no son JSON indican que la API no está
+    // respondiendo. Un 503 JSON (por ejemplo, fallo de R2) sí es una
+    // respuesta del backend y no debe activar el modo mantenimiento.
+    const esFalloInfra =
+      res.status === 502 ||
+      res.status === 504 ||
+      (res.status >= 500 && !esJson)
+
+    if (esFalloInfra) marcarNoDisponible()
+    else marcarDisponible()
+
     let data: unknown
     // El cuerpo se lee una sola vez: leerlo primero como JSON y caer a `text()`
     // lanzaba "body stream already read" cuando la respuesta de error no era
@@ -243,6 +271,7 @@ export async function apiRequest<T = unknown>(
     error.status = res.status
     error.data = data
     error.requiereRecarga = res.status === 409
+    error.infraestructura = esFalloInfra
 
     if (res.status === 401 && !rutasSinRenovacion.has(ruta) && !esReintento) {
       const nuevoAccess = await refrescarSesion()
@@ -252,6 +281,8 @@ export async function apiRequest<T = unknown>(
     }
     throw error
   }
+
+  marcarDisponible()
 
   if (res.status === 204) return {} as T
 

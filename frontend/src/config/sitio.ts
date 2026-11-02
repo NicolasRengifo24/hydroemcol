@@ -1,6 +1,6 @@
 // Configuración pública del sitio (única fuente de verdad — RF-9.2).
 //
-// Este módulo concentra los datos de contacto y enlaces públicos de Hidroemcol.
+// Este módulo concentra los datos de contacto y enlaces públicos de Hydroemcol.
 // Ningún componente debe duplicar el número ni la URL de Facebook: todos los
 // accesos visibles (WhatsApp y llamada) se derivan de aquí. Cambiar el valor en
 // este único punto actualiza todos los accesos a la vez.
@@ -20,7 +20,7 @@ export const NUMERO_CONTACTO_MOSTRADO = NUMERO_CONTACTO.replace(
 
 // Mensaje inicial por defecto de la conversación de WhatsApp (aprobado por el usuario).
 export const MENSAJE_WHATSAPP =
-  "Hola, quiero información sobre el servicio técnico de Hidroemcol.";
+  "Hola, quiero información sobre el servicio técnico de Hydroemcol.";
 
 // Enlace a la página de Facebook de la empresa, única red social del sitio (RF-10.3).
 export const URL_FACEBOOK = "https://www.facebook.com/hidroemcolservice";
@@ -46,7 +46,7 @@ export function urlLlamada(): string {
 // Dirección física de la empresa, aprobada por el usuario (RF-10.1, D-6 de
 // specs/009-vista-nosotros). Única fuente de verdad de la dirección: no se
 // inventan coordenadas ni puntos de referencia (RF-10.4).
-export const DIRECCION = "Ac. 6 #27b-55";
+export const DIRECCION = "Calle 6 # 27b-55";
 
 // Horario de atención confirmado por el usuario. Única fuente de verdad del
 // horario visible y del estado abierto/cerrado que se muestra en Nosotros.

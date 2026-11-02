@@ -7,14 +7,16 @@ import {
 } from "lucide-react";
 import { cerrarSesion } from "../services/api";
 import Seo from "../seo/Seo";
+import AvisoServicio from "./AvisoServicio";
 import Logo from "./brand/Logo";
+import { RUTA_ADMIN, RUTA_ADMIN_LOGIN, rutaAdmin } from "../config/rutasAdmin";
 
 function AdminLayout() {
   const navigate = useNavigate();
 
   async function manejarCierreSesion() {
     await cerrarSesion();
-    navigate("/admin/login", { replace: true });
+    navigate(RUTA_ADMIN_LOGIN, { replace: true });
   }
 
   return (
@@ -46,7 +48,7 @@ function AdminLayout() {
         <nav className="admin-nav" aria-label="Navegación administrativa">
           <NavLink
             end
-            to="/admin"
+            to={RUTA_ADMIN}
             className={({ isActive }) =>
               `admin-nav__link${isActive ? " is-active" : ""}`
             }
@@ -55,7 +57,7 @@ function AdminLayout() {
             Resumen operativo
           </NavLink>
           <NavLink
-            to="/admin/servicios"
+            to={rutaAdmin("servicios")}
             className={({ isActive }) =>
               `admin-nav__link${isActive ? " is-active" : ""}`
             }
@@ -64,7 +66,7 @@ function AdminLayout() {
             Servicios
           </NavLink>
           <NavLink
-            to="/admin/indicadores"
+            to={rutaAdmin("indicadores")}
             className={({ isActive }) =>
               `admin-nav__link${isActive ? " is-active" : ""}`
             }
@@ -77,6 +79,7 @@ function AdminLayout() {
           <Outlet />
         </main>
       </div>
+      <AvisoServicio variante="admin" />
     </div>
   );
 }

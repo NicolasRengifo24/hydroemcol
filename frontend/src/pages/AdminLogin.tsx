@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { iniciarSesion } from "../services/api";
+import { useDisponibilidadApi } from "../hooks/useDisponibilidadApi";
+import { useEsperaProlongada } from "../hooks/useEsperaProlongada";
 import Seo from "../seo/Seo";
+import AvisoServicio from "../components/AvisoServicio";
 import Logo from "../components/brand/Logo";
+import { RUTA_ADMIN, RUTA_ADMIN_LOGIN } from "../config/rutasAdmin";
 
 const AVISO_SESION =
   "Tu sesión ha caducado. Vuelve a entrar: tu mensaje seguirá en el campo.";
@@ -28,10 +32,10 @@ function esErrorDeAutenticacion(error: unknown): boolean {
 function rutaDeRetornoSegura(valor: unknown): string {
   if (
     typeof valor !== "string" ||
-    (valor !== "/admin" && !valor.startsWith("/admin/")) ||
-    valor === "/admin/login"
+    (valor !== RUTA_ADMIN && !valor.startsWith(`${RUTA_ADMIN}/`)) ||
+    valor === RUTA_ADMIN_LOGIN
   ) {
-    return "/admin";
+    return RUTA_ADMIN;
   }
 
   return valor;
@@ -48,6 +52,9 @@ function AdminLogin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const { estado: estadoServicio } = useDisponibilidadApi();
+  const sinServicio = estadoServicio === "no_disponible";
+  const esperaProlongada = useEsperaProlongada(enviando);
 
   useEffect(() => {
     if (estado?.aviso !== AVISO_SESION) return;
@@ -62,6 +69,7 @@ function AdminLogin() {
 
   async function manejarEnvio(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
+    if (sinServicio) return;
     setError(null);
     setEnviando(true);
 
@@ -94,7 +102,7 @@ function AdminLogin() {
         <Logo grande className="login-card__brand" />
         <div className="login-card__intro">
           <p className="login-card__eyebrow">Acceso administrativo</p>
-          <h1 id="login-titulo">Panel Hidroemcol</h1>
+          <h1 id="login-titulo">Panel Hydroemcol</h1>
           <p>
             Ingresa con tus credenciales para administrar las solicitudes y
             servicios.
@@ -118,7 +126,7 @@ function AdminLogin() {
               value={username}
               onChange={(evento) => setUsername(evento.target.value)}
               required
-              disabled={enviando}
+              disabled={enviando || sinServicio}
             />
           </div>
 
@@ -132,7 +140,7 @@ function AdminLogin() {
               value={password}
               onChange={(evento) => setPassword(evento.target.value)}
               required
-              disabled={enviando}
+              disabled={enviando || sinServicio}
             />
           </div>
 
@@ -142,15 +150,29 @@ function AdminLogin() {
             </p>
           )}
 
+          {sinServicio && (
+            <p className="login-form__error" role="status">
+              El servicio no está disponible en este momento. El botón se
+              habilitará cuando se restablezca.
+            </p>
+          )}
+
+          {enviando && esperaProlongada && !sinServicio && (
+            <p className="login-form__ayuda" role="status">
+              El servicio puede tardar hasta un minuto en iniciar…
+            </p>
+          )}
+
           <button
             className="login-form__submit"
             type="submit"
-            disabled={enviando}
+            disabled={enviando || sinServicio}
           >
             {enviando ? "Verificando acceso…" : "Ingresar al panel"}
           </button>
         </form>
       </section>
+      <AvisoServicio variante="banner" />
     </section>
   );
 }

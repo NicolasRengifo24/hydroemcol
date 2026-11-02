@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { CircuitoValvulas } from "../components/seguimiento/CircuitoValvulas";
+import { useDisponibilidadApi } from "../hooks/useDisponibilidadApi";
 import {
   obtenerSeguimiento,
   responderSeguimiento,
@@ -42,6 +43,8 @@ function comentarioDeRecepcion(
 
 function Seguimiento() {
   const { token } = useParams<{ token: string }>();
+  const { estado } = useDisponibilidadApi();
+  const sinServicio = estado === "no_disponible";
   const consulta = useQuery({
     queryKey: ["seguimiento", token],
     queryFn: () => obtenerSeguimiento(token!),
@@ -252,7 +255,7 @@ function Seguimiento() {
                   <button
                     className="seguimiento__boton"
                     type="button"
-                    disabled={respuesta.isPending}
+                    disabled={respuesta.isPending || sinServicio}
                     onClick={() =>
                       respuesta.mutate({
                         cotizacionId: cotizacion.id,
@@ -265,7 +268,7 @@ function Seguimiento() {
                   <button
                     className="seguimiento__boton seguimiento__boton--secundario"
                     type="button"
-                    disabled={respuesta.isPending}
+                    disabled={respuesta.isPending || sinServicio}
                     onClick={() =>
                       respuesta.mutate({
                         cotizacionId: cotizacion.id,
@@ -279,6 +282,12 @@ function Seguimiento() {
               </article>
             ))}
           </div>
+          {sinServicio && (
+            <p className="seguimiento__seccion-ayuda" role="status">
+              El servicio no está disponible en este momento. Podrás responder
+              cuando se restablezca la conexión.
+            </p>
+          )}
           {respuesta.isPending && (
             <p role="status">Registrando tu respuesta…</p>
           )}

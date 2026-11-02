@@ -101,7 +101,7 @@ export function BloqueUbicacion({ id = "ubicacion" }: BloqueUbicacionProps) {
           <iframe
             className="ubicacion__iframe"
             src={URL_GOOGLE_MAPS_EMBED}
-            title="Ubicación de Hidroemcol en Google Maps"
+            title="Ubicación de Hydroemcol en Google Maps"
             loading="lazy"
           />
         </div>

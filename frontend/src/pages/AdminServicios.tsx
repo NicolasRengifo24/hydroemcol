@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useServiciosAdministrativos } from '../hooks/useAdministrativo'
 import type { CodigoEstadoServicio, ParametrosListadoServicios, ServicioResumenAdministrativo } from '../services/api'
 import { mensajeDeError } from '../services/errores'
+import { rutaAdmin } from '../config/rutasAdmin'
 
 const estados: Array<{ codigo: CodigoEstadoServicio; etiqueta: string }> = [
   { codigo: 'SOLICITADO', etiqueta: 'Solicitado' },
@@ -45,7 +46,7 @@ function ServicioCard({ servicio }: { servicio: ServicioResumenAdministrativo })
   return (
     <article className="admin-service-card">
       <div className="admin-service-card__topline">
-        <Link to={`/admin/servicios/${servicio.id}`}><strong>{servicio.codigo}</strong></Link>
+        <Link to={rutaAdmin("servicios", String(servicio.id))}><strong>{servicio.codigo}</strong></Link>
         <span className="admin-status">{servicio.estado}</span>
       </div>
       <dl className="admin-service-card__details">
@@ -95,7 +96,7 @@ function AdminServicios() {
         <div>
           <p className="admin-kicker">Operación</p>
           <h1 id="servicios-titulo">Servicios</h1>
-          <p className="admin-lead">Busca y prioriza las solicitudes activas de Hidroemcol.</p>
+          <p className="admin-lead">Busca y prioriza las solicitudes activas de Hydroemcol.</p>
         </div>
         <span className="admin-page__context">10 registros por página</span>
       </div>
@@ -132,7 +133,7 @@ function AdminServicios() {
             <table className="admin-table">
               <caption className="sr-only">Servicios activos</caption>
               <thead><tr><th scope="col">Código</th><th scope="col">Cliente / empresa</th><th scope="col">Servicio</th><th scope="col">Entrega</th><th scope="col">Estado</th><th scope="col">Solicitud</th></tr></thead>
-<tbody>{consulta.data.results.map((servicio) => <tr key={servicio.id}><th scope="row"><Link to={`/admin/servicios/${servicio.id}`}>{servicio.codigo}</Link></th><td>{servicio.cliente.nombre}<small>{servicio.cliente.empresa || 'Particular'}</small></td><td>{servicio.tipo_servicio}</td><td>{preferenciaEntrega(servicio)}</td><td><span className="admin-status">{servicio.estado}</span></td><td>{fechaLegible(servicio.fecha_solicitud)}</td></tr>)}</tbody>
+<tbody>{consulta.data.results.map((servicio) => <tr key={servicio.id}><th scope="row"><Link to={rutaAdmin("servicios", String(servicio.id))}>{servicio.codigo}</Link></th><td>{servicio.cliente.nombre}<small>{servicio.cliente.empresa || 'Particular'}</small></td><td>{servicio.tipo_servicio}</td><td>{preferenciaEntrega(servicio)}</td><td><span className="admin-status">{servicio.estado}</span></td><td>{fechaLegible(servicio.fecha_solicitud)}</td></tr>)}</tbody>
             </table>
           </div>
           <div className="admin-cards" aria-label="Servicios activos en tarjetas">{consulta.data.results.map((servicio) => <ServicioCard key={servicio.id} servicio={servicio} />)}</div>

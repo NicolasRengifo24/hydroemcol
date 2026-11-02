@@ -42,6 +42,11 @@ solo es obligatoria la primera vez; después de verificar el acceso se puede ret
 `HIDROEMCOL_ADMIN_PASSWORD` del entorno. Si el usuario se borrara, el comando fallaría sin esa
 variable: en ese caso quita también el comando del build.
 
+El admin de Django (`/admin/`) solo se registra en `config/urls.py` cuando `DEBUG=True`. En
+producción responde `404`: la única interfaz de operación es el panel propio del frontend. El
+usuario se mantiene con `is_staff=True` porque no afecta a la API y permite usar el admin en
+local cuando se necesite.
+
 ## Fotografías: fallos de almacenamiento
 
 Si el almacenamiento no puede guardar una fotografía, la solicitud pública responde `503` con
@@ -80,12 +85,41 @@ Añade estas reglas:
 
 | Request Path | Header Name | Header Value |
 | --- | --- | --- |
-| `/admin` | `X-Robots-Tag` | `noindex, nofollow` |
-| `/admin/*` | `X-Robots-Tag` | `noindex, nofollow` |
+| `/control-operativo` | `X-Robots-Tag` | `noindex, nofollow` |
+| `/control-operativo/*` | `X-Robots-Tag` | `noindex, nofollow` |
 | `/seguimiento/*` | `X-Robots-Tag` | `noindex, nofollow` |
 
-No agregues `Disallow` para estas rutas en `robots.txt`: si Google no puede rastrearlas,
+Las reglas antiguas de `/admin` pueden conservarse por bookmarks, pero ya no son la ruta del
+panel. No agregues `Disallow` para estas rutas en `robots.txt`: si Google no puede rastrearlas,
 tampoco puede leer el `noindex`.
+
+### Cloudflare Access para el panel
+
+El nombre de la ruta no es una medida de seguridad: el bundle público contiene todas las rutas.
+La protección real es Cloudflare Access más la autenticación JWT de la API.
+
+En **Zero Trust > Access > Applications**, crea una aplicación *Self-hosted*:
+
+| Campo | Valor |
+| --- | --- |
+| Dominio | `www.hydroemcol.com` |
+| Ruta | `control-operativo*` |
+| Sesión | 8 a 24 horas |
+| Política | `Allow` solo para los correos autorizados |
+| Identidad | One-time PIN por correo o Google |
+
+Access solo cubre la carga del documento. Si alguien entra por `/` y navega del lado del
+cliente hacia el panel, no se vuelve a pedir el PIN; los datos siguen protegidos porque la API
+exige JWT. Para bloquear también ese caso haría falta un hostname separado, que el plan free de
+Render no permite añadir ahora.
+
+### Rutas desconocidas
+
+`frontend/src/router.tsx` redirige `/admin` y `/admin/*` al inicio para no romper bookmarks
+antiguos. Cualquier otra ruta desconocida renderiza `NoEncontrada`, una página 404 con el logo
+de la empresa y un acceso directo a WhatsApp. La página es estática (la SPA responde `200` por
+el rewrite) y declara `noindex`, así que no debe usarse como sustituto de un `404` real en el
+servidor.
 
 ### Render: rewrite de la SPA
 
@@ -129,3 +163,29 @@ El límite de cinco fallos por minuto y por IP usa el caché configurado de Djan
 Redis. Con varias instancias de Render, el backend local `LocMemCache` mantiene un contador por
 proceso; por tanto, el límite no es global entre instancias. Esta es una limitación operativa
 conocida de la configuración actual y no debe interpretarse como coordinación distribuida.
+
+## Modo mantenimiento del frontend
+
+El frontend es un sitio estático y sigue siendo navegable aunque la API esté suspendida. Para
+evitar errores crudos, `frontend/src/services/disponibilidad.ts` mantiene un estado global que se
+activa solo ante fallos de infraestructura:
+
+- error de red al hacer `fetch`;
+- `502`, `504` y respuestas `5xx` que no son JSON (páginas de error de Render o Cloudflare);
+- sondeo fallido a `GET /healthz/`.
+
+Los errores `4xx` (validación, credenciales, permisos o conflicto) y los `503` JSON del backend
+(por ejemplo, fallo de R2) **no** activan el modo mantenimiento: son respuestas de una API que sí
+está en línea.
+
+Cuando el estado pasa a `no_disponible`:
+
+- en el sitio público aparece un aviso no bloqueante (`AvisoServicio`) y los botones de envío se
+  deshabilitan;
+- en `/admin` se muestra un panel bloqueante con la opción de reintentar o volver al inicio;
+- se sondea `/healthz/` con espera creciente (10, 20, 40 y 60 segundos), solo con la pestaña
+  visible y durante un máximo de 10 minutos; después queda el reintento manual;
+- al recuperarse la API, el aviso desaparece y React Query invalida las consultas.
+
+El sondeo usa `VITE_API_URL` para construir la URL. En desarrollo, `vite.config.ts` redirige
+`/healthz` al backend local para que el aviso también funcione sin esa variable.

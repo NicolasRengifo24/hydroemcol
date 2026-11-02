@@ -46,7 +46,7 @@ export function CTANosotros({ id = "cta-nosotros" }: CTANosotrosProps) {
       </h2>
       {/* PROVISIONAL (RF-11.1): pendiente de validación. */}
       <p className="cta-nosotros__texto">
-        Escríbenos por WhatsApp y recibe atención directa del equipo de Hidroemcol.
+        Escríbenos por WhatsApp y recibe atención directa del equipo de Hydroemcol.
       </p>
 
       <div className="cta-nosotros__acciones">

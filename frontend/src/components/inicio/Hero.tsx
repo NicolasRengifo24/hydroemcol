@@ -52,7 +52,7 @@ export function Hero({ ctaTexto, ctaTo }: HeroProps) {
 
       <div className="hero__contenido">
         <m.div className="hero__texto" {...revelarTexto}>
-          <p className="hero__eyebrow">Hidroemcol · Ingeniería y servicio técnico</p>
+          <p className="hero__eyebrow">Hydroemcol · Ingeniería y servicio técnico</p>
           <h1 id="inicio-hero" className="hero__mensaje">
             {MENSAJE_HERO}
           </h1>
