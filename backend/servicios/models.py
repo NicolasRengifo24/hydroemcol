@@ -68,6 +68,19 @@ class TipoFotografia(models.TextChoices):
     OTRO = 'OTRO', 'Otro'
 
 
+class CategoriaProducto(models.TextChoices):
+    """Catálogo cerrado de la vitrina (spec 013, RF-VIT-04).
+
+    El valor persistido es exactamente el slug del query string público, de
+    modo que no existe una segunda tabla de traducción código → slug.
+    """
+
+    BOMBAS_HIDRAULICAS = 'bombas-hidraulicas', 'Bombas hidráulicas'
+    REPARACION_MANTENIMIENTO = 'reparacion-mantenimiento', 'Reparación y mantenimiento'
+    CONTROL_HIDRAULICO = 'control-hidraulico', 'Control hidráulico'
+    TRANSMISION = 'transmision', 'Transmisión'
+
+
 # ─────────────────────────────────────────────────────────────
 # Entidades
 # ─────────────────────────────────────────────────────────────
@@ -480,3 +493,91 @@ class Fotografia(models.Model):
 
     def __str__(self):
         return f'{self.get_tipo_display()} — {self.servicio}'
+
+
+# ─────────────────────────────────────────────────────────────
+# Vitrina digital (spec 013)
+# ─────────────────────────────────────────────────────────────
+
+class Producto(models.Model):
+    """Producto de la vitrina pública `/productos`.
+
+    Presenta repuestos y novedades sin precio, stock ni disponibilidad
+    comercial. La imagen se guarda solo como referencia de almacenamiento
+    (Cloudflare/R2 o `/media/...`), nunca como binario. Sin auditoría por
+    decisión consciente de la spec (Opción A): solo fechas de creación y
+    actualización.
+    """
+
+    nombre = models.CharField(max_length=150, verbose_name='Nombre')
+    categoria = models.CharField(
+        max_length=32, choices=CategoriaProducto.choices, verbose_name='Categoría',
+    )
+    descripcion = models.TextField(verbose_name='Descripción general')
+    imagen_referencia = models.CharField(
+        max_length=500, verbose_name='Referencia de imagen',
+    )
+    imagen_alt = models.CharField(max_length=200, verbose_name='Texto alternativo')
+    # Oculto por defecto: publicar exige una acción explícita del
+    # administrativo (decisión de seguridad editorial de la spec 013).
+    visible = models.BooleanField(default=False, verbose_name='Visible')
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+    fecha_actualizacion = models.DateTimeField(
+        auto_now=True, verbose_name='Fecha de actualización',
+    )
+
+    class Meta:
+        verbose_name = 'Producto'
+        verbose_name_plural = 'Productos'
+        ordering = ['-fecha_creacion', '-id']
+        indexes = [
+            # RF-VIT-03: la consulta pública filtra por `visible` y ordena por
+            # fecha y desempate interno.
+            models.Index(
+                fields=['visible', '-fecha_creacion', '-id'],
+                name='producto_vitrina_idx',
+            ),
+        ]
+
+    def __str__(self):
+        return self.nombre
+
+
+class ImagenCarrusel(models.Model):
+    """Imagen del carrusel visual de la vitrina (spec 013, RF-VIT-15).
+
+    Es contenido estrictamente visual: no tiene título, texto de apoyo,
+    enlace, CTA ni WhatsApp. La descripción de la imagen es el texto
+    alternativo obligatorio y no se muestra en pantalla.
+    """
+
+    imagen_referencia = models.CharField(
+        max_length=500, verbose_name='Referencia de imagen',
+    )
+    imagen_alt = models.CharField(max_length=200, verbose_name='Descripción de la imagen')
+    # Posición guardada 1–4, también cuando está oculta. Solo las visibles
+    # ocupan una posición pública.
+    orden = models.PositiveSmallIntegerField(verbose_name='Orden')
+    visible = models.BooleanField(default=False, verbose_name='Visible')
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+
+    class Meta:
+        verbose_name = 'Imagen del carrusel'
+        verbose_name_plural = 'Imágenes del carrusel'
+        ordering = ['orden']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(orden__gte=1, orden__lte=4),
+                name='carrusel_orden_entre_1_y_4',
+            ),
+            # Unicidad parcial: solo entre visibles. Dos ocultas pueden repetir
+            # orden y no ocupan posición pública (RF-VIT-15).
+            models.UniqueConstraint(
+                fields=['orden'],
+                condition=models.Q(visible=True),
+                name='carrusel_orden_unico_visible',
+            ),
+        ]
+
+    def __str__(self):
+        return f'Imagen del carrusel — orden {self.orden}'

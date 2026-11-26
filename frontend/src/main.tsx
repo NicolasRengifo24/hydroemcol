@@ -14,6 +14,7 @@ import {
   esFalloDeInfraestructura,
   marcarNoDisponible,
 } from './services/disponibilidad'
+import { inicializarMedicion } from './services/medicion'
 import './index.css'
 
 function debeReintentar(intento: number, error: unknown): boolean {
@@ -50,6 +51,8 @@ const queryClient = new QueryClient({
     },
   }),
 })
+
+inicializarMedicion()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

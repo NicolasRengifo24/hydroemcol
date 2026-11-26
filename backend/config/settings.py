@@ -177,6 +177,12 @@ STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Base pública para construir las URLs de las imágenes de la vitrina (bucket
+# R2 público o dominio propio). Vacía por defecto: sin ella se usa la URL
+# firmada existente, funcional pero no cacheable. No es una credencial ni un
+# dominio hardcodeado; se define en el entorno de despliegue.
+VITRINA_IMAGENES_BASE_URL = os.getenv('VITRINA_IMAGENES_BASE_URL', '').rstrip('/')
+
 
 # Cloudflare R2 privado. Se activa solo cuando el entorno de despliegue lo
 # solicita; el desarrollo local conserva el almacenamiento de Django.

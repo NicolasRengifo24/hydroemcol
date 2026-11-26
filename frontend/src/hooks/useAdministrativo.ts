@@ -38,6 +38,14 @@ import {
   type ParametrosListadoServicios,
   type RespuestaCotizacion,
 } from '../services/api'
+import {
+  actualizarProductoAdministrativo,
+  crearProductoAdministrativo,
+  eliminarProductoAdministrativo,
+  listarProductosAdministrativos,
+  type DatosActualizacionProducto,
+  type DatosNuevoProducto,
+} from '../services/vitrina'
 
 export function useDashboardAdministrativo() {
   return useQuery({ queryKey: clavesAdministrativas.dashboard(), queryFn: obtenerDashboardAdministrativo })
@@ -135,5 +143,65 @@ export function useMutacionesCotizacion(servicioId: number) {
     actualizar: useMutation({ mutationFn: ({ id, datos }: { id: number; datos: Partial<DatosCotizacion> }) => actualizarCotizacion(id, datos), ...opciones() }),
     reenviar: useMutation({ mutationFn: ({ id, datos }: { id: number; datos: Parameters<typeof reenviarCotizacion>[1] }) => reenviarCotizacion(id, datos), ...opciones() }),
     registrarAprobacion: useMutation({ mutationFn: ({ id, datos }: { id: number; datos: DatosAprobacionExterna }) => registrarAprobacionExterna(id, datos), ...opciones() }),
+  }
+}
+
+// Vitrina administrativa (spec 013, T7). Las claves siguen el prefijo
+// `['administrativo', ...]` y toda mutación invalida además la vitrina pública
+// para que una navegación posterior no reutilice caché anterior.
+export const clavesVitrinaAdministrativa = {
+  productos: ['administrativo', 'productos'] as const,
+}
+
+function invalidarVitrina(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: clavesVitrinaAdministrativa.productos })
+  void queryClient.invalidateQueries({ queryKey: ['vitrina'] })
+}
+
+function opcionesMutacionVitrina<TVariables, TResult>(
+  queryClient: ReturnType<typeof useQueryClient>,
+  opciones?: UseMutationOptions<TResult, ErrorApi, TVariables>,
+): UseMutationOptions<TResult, ErrorApi, TVariables> {
+  return {
+    ...opciones,
+    onSuccess: (data, variables, contexto, contextoMutacion) => {
+      invalidarVitrina(queryClient)
+      opciones?.onSuccess?.(data, variables, contexto, contextoMutacion)
+    },
+    onError: (error, variables, contexto, contextoMutacion) => {
+      // Un 409 significa que otro cambio ganó la carrera: se refresca el estado
+      // del servidor; nunca se aplica un resultado local sin confirmación.
+      if (error.status === 409) invalidarVitrina(queryClient)
+      opciones?.onError?.(error, variables, contexto, contextoMutacion)
+    },
+  }
+}
+
+export function useProductosAdministrativos() {
+  return useQuery({
+    queryKey: clavesVitrinaAdministrativa.productos,
+    queryFn: listarProductosAdministrativos,
+  })
+}
+
+export function useMutacionesProductos() {
+  const queryClient = useQueryClient()
+  const opciones = <TVariables, TResult>(extra?: UseMutationOptions<TResult, ErrorApi, TVariables>) =>
+    opcionesMutacionVitrina(queryClient, extra)
+
+  return {
+    crear: useMutation({
+      mutationFn: (datos: DatosNuevoProducto) => crearProductoAdministrativo(datos),
+      ...opciones(),
+    }),
+    actualizar: useMutation({
+      mutationFn: ({ id, datos }: { id: number; datos: DatosActualizacionProducto }) =>
+        actualizarProductoAdministrativo(id, datos),
+      ...opciones(),
+    }),
+    eliminar: useMutation({
+      mutationFn: (id: number) => eliminarProductoAdministrativo(id),
+      ...opciones(),
+    }),
   }
 }

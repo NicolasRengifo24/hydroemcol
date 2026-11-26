@@ -15,6 +15,7 @@ from .views import (
     FotografiaListCreateView,
     FotografiaDetailView,
     HistorialServicioListCreateView,
+    ProductoAdminViewSet,
     RespuestaCotizacionView,
     SeguimientoAprobarView,
     SeguimientoView,
@@ -23,12 +24,14 @@ from .views import (
     SolicitudPublicaCreateView,
     RegistroTecnicoView,
     RegistrarRecepcionView,
+    VitrinaPublicaView,
 )
 
 router = DefaultRouter()
 router.register('clientes', ClienteViewSet, basename='cliente')
 router.register('servicios', ServicioViewSet, basename='servicio')
 router.register('cotizaciones', CotizacionViewSet, basename='cotizacion')
+router.register('admin/productos', ProductoAdminViewSet, basename='admin-producto')
 
 urlpatterns = [
     path('admin/dashboard/', DashboardAdministrativoView.as_view(), name='admin-dashboard'),
@@ -49,6 +52,7 @@ urlpatterns = [
     path('seguimiento/<str:token>/', SeguimientoView.as_view(), name='seguimiento'),
     path('seguimiento/<str:token>/aprobar/', SeguimientoAprobarView.as_view(), name='seguimiento-aprobar'),
     path('solicitudes/', SolicitudPublicaCreateView.as_view(), name='solicitud-publica'),
+    path('productos/', VitrinaPublicaView.as_view(), name='vitrina-productos'),
 ]
 
 urlpatterns += router.urls

@@ -28,7 +28,7 @@ Cambios aprobados que este plan debe reflejar:
 
 | Archivo | Responsabilidad | RF/RNF |
 |---|---|---|
-| `frontend/src/config/sitio.ts` | Único punto de configuración del contacto, URLs de WhatsApp/llamada y Facebook, con los datos de desarrollo marcados como temporales. | RF-9.1–9.4, RF-10.3 |
+| `frontend/src/config/sitio.ts` | Único punto de configuración del contacto, URLs de WhatsApp/llamada y Facebook, con el número de contacto definitivo centralizado y los demás datos de desarrollo marcados como temporales. | RF-9.1–9.4, RF-10.3 |
 | `frontend/src/components/inicio/contenido.ts` | Datos estáticos y tipos de la página: tarjetas, servicios, componentes, capacidades, marcas, pasos e `ImagenFolleto`. `IMAGENES_FOLLETO` conserva los tres productos para el carrusel y las dos imágenes reservadas, sin que estas últimas se rendericen en Inicio. | RF-2.4–2.6, RF-4.1–4.7, RF-5.1–5.5, RF-6.1–6.4, RF-11.1–11.4 |
 | `frontend/src/components/inicio/inicio.css` | Estilos de Inicio: layout responsive, animación de tarjetas, carrusel, estados de foco/error y reglas `prefers-reduced-motion`, reutilizando los tokens existentes. | RF-3, RF-4.5–4.8, RNF-1, RNF-2, RNF-7, RNF-8, RNF-11, RNF-14 |
 | `frontend/src/components/inicio/SeccionEncabezado.tsx` | Encabezado reutilizable de sección con título, descripción opcional, nivel configurable e `id` para `aria-labelledby`. | RF-1.3, RNF-3, RNF-4 |
@@ -188,7 +188,7 @@ el lint siguen siendo obligatorios.
 
 La solicitud aprobada define la arquitectura suficiente para implementar el carrusel y no requiere
 una nueva aprobación de alcance. Se mantienen como pendientes de producto ya documentados en la
-spec, pero no bloquean este ajuste de plan: número definitivo de producción, URL real de Facebook,
-variantes del logo sobre fondos oscuros y validación final del contenido provisional de pasos y
-del h1. Los `alt` de las cinco imágenes no son una decisión pendiente para esta implementación:
-los tres de productos y los dos recursos reservados ya están confirmados en `contenido.ts`.
+spec, pero no bloquean este ajuste de plan: URL real de Facebook, variantes del logo sobre fondos
+oscuros y validación final del contenido provisional de pasos y del h1. Los `alt` de las cinco
+imágenes no son una decisión pendiente para esta implementación: los tres de productos y los dos
+recursos reservados ya están confirmados en `contenido.ts`.

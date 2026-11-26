@@ -667,3 +667,31 @@ Channels sigue en esa lista, y por eso el "tiempo real" se pospuso a una decisi�
   selector ofrece solo "Operario trabajando"; cotización no bloqueante dejó el selector con
   "Rechazado" + avance y la tarjeta marcada "No bloqueante"; cotización bloqueante dejó el selector
   solo con "Rechazado" y bloqueó el avance.
+
+  ## Vitrina digital de productos — Spec 013
+
+Se aprobó ampliar el modelo persistente con `Producto` e `ImagenCarrusel` para la vitrina digital. El cambio impactará migraciones, API pública/administrativa, panel administrativo y frontend.
+
+`ImagenCarrusel` será visual, con máximo cuatro imágenes visibles, orden configurable y visibilidad; no tendrá textos, CTA ni mensajes promocionales.
+
+No se creará una entidad de auditoría para esta vitrina porque será administrada por una sola persona. Se conservarán fechas, estado actual y seguridad administrativa.
+
+Los productos e imágenes usarán `visible`; `visible_cliente=True` continúa reservado para serializers de servicios y datos de clientes.
+
+Decisión visual de carga (2026-11-18): el carrusel usa una sola proporción `16 / 9` en todos los viewports y `object-fit: cover`; las tarjetas usan `3 / 4` y `object-fit: cover`. Para que no haya recorte ni espacios, las imágenes deben subirse exactamente en esas proporciones: carrusel `1600 × 900` px y productos `1200 × 1600` px (o `960 × 1280` px, que es la proporción de las siete imágenes actuales). El backend conserva la proporción original; no valida estas medidas.
+
+Catálogo inicial cargado (2026-11-19) desde `frontend/public/img/productos/`, 7 productos visibles: `Bombas de piñones piloto y de pre-carga para todas las aplicaciones` y `Bombas remanufacturadas` (bombas hidráulicas); `Retenedores hidráulicos de alta presión para bombas y motores`, `Piezas internas para reparación de bombas y motores` y `Kit de empaquetadura para bombas y motores` (reparación y mantenimiento); `Controles y válvulas de regulación` (control hidráulico); `Cupling y ejes de conexión` (transmisión). Los nombres y descripciones salen de los nombres de archivo aprobados por el usuario; no se inventaron marcas, referencias, precios ni stock.
+
+### 2026-11-20 — Spec 013: cierre del retiro de la administración del carrusel
+
+- **T1–T8 completadas.** El párrafo anterior refleja la aprobación inicial (carrusel administrable, hasta cuatro imágenes, orden configurable); queda **supercedido** por este cierre: ya no hay administración del carrusel.
+- **Variante A aplicada:** se conservan `HeroProductos` con cinco piezas editoriales, su CTA de WhatsApp, autoplay/pausa, teclado, gesto y `prefers-reduced-motion`, y el contrato público legado `ImagenCarrusel` / campo `carrusel` (solo lectura, `url` y `alt`). Se elimina únicamente su superficie administrativa: tests, ViewSet y ruta, serializer administrativo, reglas de límite/posiciones/reactivación, tipos y funciones de transporte, hooks y clave de caché, página/ruta/menú del panel y estilos huérfanos.
+- **Sin cambios de modelo:** no hay migración nueva (la última sigue siendo `0010_producto_imagen_carrusel`), no se borran modelo ni datos, no hay seed, fixture ni script de carga. Las siete imágenes siguen cargadas y visibles según spec §2. Siguen intactos el CRUD de Producto, su API pública, `clave_publica_producto`, medición, SEO y panel de productos. RF-VIT-16, 17, 18 y 21 desaparecen sin renumerar.
+- **Corrección puntual en T8:** `AdminProductos.tsx` aún omitía una clave de posiciones del carrusel al traducir errores de campo; se retiró esa clave porque la API de productos nunca la devuelve y era resto del contrato del carrusel retirado. Sin cambio de comportamiento para Producto.
+- **Verificación:** `manage.py check` sin issues; `makemigrations --check --dry-run` sin cambios; `manage.py test servicios` con `R2_ENABLED=False` → 202 tests OK; `npm run build` OK y `npm run lint` con 2 warnings preexistentes en `HeroProductos.tsx`; `node --test` → 0 tests (plan D-P13, sin runner JS). `GET /api/productos/` → 200 con 7 visibles y `carrusel` de solo lectura; sin ruta administrativa de carrusel (`Resolver404`); búsqueda de identificadores de administración del carrusel sin resultados, con citas de RF eliminados en docstrings y comentarios corregidas en la revisión posterior.
+- **Limitación:** no se pudo verificar visualmente con Chrome DevTools MCP (herramienta no disponible en la sesión); la comprobación manual queda respaldada por inspección de código, tests y compilación. Con el `.env` actual (`R2_ENABLED=True`) persisten 2 fallos preexistentes de `FotoSolicitudTest`, ajenos a este cambio.
+
+### 2026-11-26 — Número de contacto definitivo
+
+- El usuario confirmó que el número final de la empresa es `3242052047`. Se centralizó como `+573242052047` en `frontend/src/config/sitio.ts` (`NUMERO_CONTACTO`), del que derivan `https://wa.me/573242052047`, `tel:+573242052047` y el texto visible `+57 324 2052047`.
+- Se actualizaron las referencias de la spec 003 que aún usaban el número de desarrollo anterior y se retiró el número de contacto de las dudas abiertas. No se modificaron números de prueba de clientes en tests ni especificaciones de WhatsApp transaccional.

@@ -1,3 +1,4 @@
+import logging
 import unicodedata
 
 from django.conf import settings
@@ -7,7 +8,9 @@ from django.db.models import Count, Q, F, Value
 from django.db.models.functions import Lower, Replace
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework import generics, status, viewsets
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_protect
+from rest_framework import generics, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, BasePermission
 from rest_framework.response import Response
@@ -30,10 +33,17 @@ from .acciones import (
     eliminar_fotografia,
     desactivar_servicio,
 )
-from .almacenamiento import ErrorDeAlmacenamiento, guardar_fotografias
+from .almacenamiento import (
+    ErrorDeAlmacenamiento,
+    eliminar_referencia,
+    guardar_fotografias,
+    guardar_imagen_vitrina,
+)
+from .imagenes import ErrorDeImagen
 from .mensajes import construir_bloque_whatsapp
 from .models import (
     AprobacionServicio,
+    CategoriaProducto,
     Cliente,
     Componente,
     Cotizacion,
@@ -41,7 +51,9 @@ from .models import (
     EstadoServicio,
     Fotografia,
     HistorialServicio,
+    ImagenCarrusel,
     MedioAprobacion,
+    Producto,
     Servicio,
     TipoServicio,
     RegistroTecnico,
@@ -71,10 +83,16 @@ from .serializers import (
     RegistroTecnicoSerializer,
     RegistroTecnicoInputSerializer,
     FotografiaAdministrativaSerializer,
+    ImagenCarruselPublicoSerializer,
+    ProductoAdminSerializer,
+    ProductoPublicoSerializer,
+    categorias_publicas,
     FOTOGRAFIA_FORMATOS,
     FOTOGRAFIA_TAMANO_MAX,
 )
 from .validators import validar_celular_colombiano
+
+logger = logging.getLogger(__name__)
 
 
 def _client_ip(request):
@@ -787,6 +805,139 @@ class DashboardAdministrativoView(APIView):
 
 
 # ─────────────────────────────────────────────────────────────
+# Vitrina: API administrativa de productos (spec 013, T4)
+# ─────────────────────────────────────────────────────────────
+
+MENSAJE_FALLO_ALMACENAMIENTO_VITRINA = (
+    'No pudimos guardar la imagen. Inténtalo de nuevo en unos minutos.'
+)
+
+
+def _guardar_imagen_de_vitrina(archivo, carpeta):
+    """Procesa y guarda una imagen de la vitrina.
+
+    Devuelve ``(referencia, respuesta_de_error)``: un fallo de validación
+    responde 400 con el campo y un fallo del proveedor 503 con un mensaje
+    genérico. No escribe nada por sí misma más allá del archivo.
+    """
+    try:
+        return guardar_imagen_vitrina(archivo, carpeta), None
+    except ErrorDeImagen as error:
+        return None, Response(
+            {error.campo: [error.detalle]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except ErrorDeAlmacenamiento:
+        return None, Response(
+            {'detail': MENSAJE_FALLO_ALMACENAMIENTO_VITRINA},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+
+def _descartar_imagen_de_vitrina(referencia):
+    """Elimina una referencia nueva sin ocultar el error original."""
+    try:
+        eliminar_referencia(referencia)
+    except Exception:
+        logger.exception(
+            'No se pudo eliminar la imagen nueva tras un fallo al guardar la '
+            'vitrina.',
+        )
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class ProductoAdminViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """CRUD administrativo de productos de la vitrina (RF-VIT-09..13).
+
+    - `GET` lista visibles y ocultos con el orden administrativo.
+    - `POST` crea el producto después de procesar y guardar su imagen.
+    - `PATCH` edita campos o reemplaza la imagen; sin `imagen` conserva la
+      actual y `visible` se cambia aquí (no hay endpoint aparte).
+    - `DELETE` oculta de forma recuperable: la fila sigue en el listado.
+
+    Atomicidad: si la imagen no es válida o el almacenamiento falla no se crea
+    ni modifica la fila; si la base de datos falla después de guardar el
+    archivo nuevo, se elimina esa referencia y se relanza. La imagen anterior
+    nunca se borra.
+    """
+
+    permission_classes = [EsAdministrativo]
+    serializer_class = ProductoAdminSerializer
+    # Sin PUT ni lectura de detalle: el contrato aprobado tiene solo estas
+    # operaciones y la visibilidad se cambia por PATCH.
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+
+    def get_queryset(self):
+        return Producto.objects.all().order_by('-fecha_creacion', '-id')
+
+    def list(self, request, *args, **kwargs):
+        productos = self.get_queryset()
+        return Response({
+            'resultados': self.get_serializer(productos, many=True).data,
+        })
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        archivo = serializer.validated_data.pop('imagen')
+
+        referencia, error = _guardar_imagen_de_vitrina(
+            archivo, 'vitrina/productos',
+        )
+        if error is not None:
+            return error
+
+        try:
+            producto = serializer.save(imagen_referencia=referencia)
+        except Exception:
+            _descartar_imagen_de_vitrina(referencia)
+            raise
+        return Response(
+            self.get_serializer(producto).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        producto = self.get_object()
+        serializer = self.get_serializer(
+            producto, data=request.data, partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        archivo = serializer.validated_data.pop('imagen', None)
+
+        referencia = None
+        if archivo is not None:
+            referencia, error = _guardar_imagen_de_vitrina(
+                archivo, 'vitrina/productos',
+            )
+            if error is not None:
+                return error
+
+        try:
+            if referencia is None:
+                producto = serializer.save()
+            else:
+                producto = serializer.save(imagen_referencia=referencia)
+        except Exception:
+            if referencia is not None:
+                _descartar_imagen_de_vitrina(referencia)
+            raise
+        return Response(self.get_serializer(producto).data)
+
+    def destroy(self, request, *args, **kwargs):
+        producto = self.get_object()
+        producto.visible = False
+        producto.save(update_fields=['visible', 'fecha_actualizacion'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ─────────────────────────────────────────────────────────────
 # API pública (sin login, con token privado)
 # ─────────────────────────────────────────────────────────────
 
@@ -951,3 +1102,67 @@ class SolicitudPublicaCreateView(APIView):
             )
 
         return Response(self._respuesta(servicio), status=status.HTTP_201_CREATED)
+
+
+class VitrinaPublicaView(APIView):
+    """Catálogo público de productos y carrusel (spec 013).
+
+    Solo lectura y sin autenticación. Devuelve únicamente lo publicado: ni
+    productos ni imágenes ocultas, ni identificadores internos, fechas o
+    campos de administración (RF-VIT-01..07/19). La respuesta desactiva la
+    caché para que una publicación sea visible de inmediato (RF-VIT-10).
+    """
+
+    permission_classes = [AllowAny]
+
+    MENSAJE_CATEGORIA_INVALIDA = 'La categoría indicada no existe.'
+
+    def get(self, request):
+        categorias = categorias_publicas()
+        solicitadas = request.query_params.getlist('categoria')
+
+        categoria = None
+        if solicitadas:
+            # El filtro es exacto y único: un valor desconocido, vacío o
+            # repetido no se interpreta como "sin filtro" (RF-VIT-04).
+            if (
+                len(solicitadas) != 1
+                or solicitadas[0] not in CategoriaProducto.values
+            ):
+                respuesta = Response(
+                    {
+                        'detail': self.MENSAJE_CATEGORIA_INVALIDA,
+                        'categorias': categorias,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+                respuesta['Cache-Control'] = 'no-store'
+                return respuesta
+            categoria = solicitadas[0]
+
+        productos = (
+            Producto.objects
+            .filter(visible=True)
+            .exclude(imagen_referencia='')
+            .exclude(imagen_alt='')
+            .order_by('-fecha_creacion', '-id')
+        )
+        if categoria is not None:
+            productos = productos.filter(categoria=categoria)
+
+        carrusel = (
+            ImagenCarrusel.objects
+            .filter(visible=True)
+            .exclude(imagen_referencia='')
+            .exclude(imagen_alt='')
+            .order_by('orden')
+        )
+
+        respuesta = Response({
+            'categorias': categorias,
+            'categoria': categoria,
+            'carrusel': ImagenCarruselPublicoSerializer(carrusel, many=True).data,
+            'resultados': ProductoPublicoSerializer(productos, many=True).data,
+        })
+        respuesta['Cache-Control'] = 'no-store'
+        return respuesta

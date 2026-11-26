@@ -17,6 +17,11 @@ const METADATOS_POR_RUTA: Record<string, MetadatosPagina> = {
     descripcion:
       "Kits de reparación, componentes hidráulicos, repuestos sobre pedido y servicio técnico especializado para sistemas hidráulicos y electrohidráulicos.",
   },
+  "/productos": {
+    titulo: "Productos y repuestos hidráulicos | Hydroemcol S.A.S",
+    descripcion:
+      "Consulta productos y repuestos hidráulicos de Hydroemcol S.A.S. Solicita información por WhatsApp.",
+  },
   "/nosotros": {
     titulo: "Nosotros | Hydroemcol S.A.S",
     descripcion:

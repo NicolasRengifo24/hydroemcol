@@ -16,6 +16,7 @@ const ANIO_ACTUAL = new Date().getFullYear();
 const navItems = [
   { to: "/", label: "Inicio" },
   { to: "/soluciones", label: "Soluciones" },
+  { to: "/productos", label: "Productos" },
   { to: "/solicitar", label: "Solicitar servicio" },
   { to: "/seguimiento", label: "Seguimiento" },
   { to: "/nosotros", label: "Nosotros" },

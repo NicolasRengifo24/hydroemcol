@@ -194,8 +194,8 @@ function Soluciones() {
                 </span>
               </li>
             </ul>
-            <Link className="soluciones-productos__cta" to="/solicitar">
-              Solicitar repuesto
+            <Link className="soluciones-productos__cta" to="/productos">
+              Ver repuestos
               <ArrowRight size={18} strokeWidth={2.2} aria-hidden="true" />
             </Link>
           </div>

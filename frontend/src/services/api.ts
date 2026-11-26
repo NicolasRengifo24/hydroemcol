@@ -2,6 +2,8 @@ import { marcarDisponible, marcarNoDisponible } from './disponibilidad'
 
 export interface RequestOptions extends RequestInit {
   idempotencyKey?: string
+  /** Fuerza el envío de `X-CSRFToken` en mutaciones (plan §4.4). */
+  csrf?: boolean
 }
 
 export type EstadoSesion = 'anonima' | 'autenticando' | 'autenticada'
@@ -198,6 +200,7 @@ export async function apiRequest<T = unknown>(
 ): Promise<T> {
   const {
     idempotencyKey,
+    csrf,
     headers: customHeaders,
     _reintentoSesion: esReintento,
     ...rest
@@ -209,7 +212,7 @@ export async function apiRequest<T = unknown>(
     headers.set('Authorization', `Bearer ${accessToken}`)
   }
 
-  if (rutasConCsrf.has(ruta) && !headers.has('X-CSRFToken')) {
+  if ((rutasConCsrf.has(ruta) || csrf) && !headers.has('X-CSRFToken')) {
     headers.set('X-CSRFToken', await obtenerCsrf())
   }
 

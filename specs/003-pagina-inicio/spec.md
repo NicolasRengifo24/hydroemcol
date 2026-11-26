@@ -262,12 +262,11 @@ desde la página de inicio, para consultar el avance sin depender de mensajes o 
 ### RF-9 — Contacto directo (WhatsApp)
 
 - **RF-9.1** EL SISTEMA ofrece en la página de inicio un acceso directo a WhatsApp con el
-  número de desarrollo +57 312 5967913, que también sirve como número de teléfono de contacto.
-- **RF-9.2** MIENTRAS el sitio esté en fase de desarrollo, EL SISTEMA permite sustituir el
-  número de contacto +57 312 5967913 desde un único punto sin tener que buscarlo en varios
-  lugares, y no lo presenta como dato definitivo de producción.
+  número definitivo +57 324 2052047, que también sirve como número de teléfono de contacto.
+- **RF-9.2** EL SISTEMA permite sustituir el número de contacto +57 324 2052047 desde un único
+  punto sin tener que buscarlo en varios lugares, y lo presenta como dato definitivo de producción.
 - **RF-9.3** CUANDO el visitante activa el contacto por WhatsApp, EL SISTEMA abre una
-  conversación dirigida al número +57 312 5967913 configurado en el único punto de contacto.
+  conversación dirigida al número +57 324 2052047 configurado en el único punto de contacto.
 - **RF-9.4** SI el canal de contacto por WhatsApp no está disponible o el número configurado es
   inválido, ENTONCES EL SISTEMA ofrece como alternativa de contacto el mismo número por
   llamada telefónica, de forma comprensible y funcional en la misma página.
@@ -352,8 +351,8 @@ desde la página de inicio, para consultar el avance sin depender de mensajes o 
   transiciones animadas y la imagen activa sigue siendo comprensible.
 - El sistema operativo o el navegador bloquea la apertura de WhatsApp: el visitante encuentra
   una alternativa de contacto comprensible en la misma página.
-- El número de contacto aún es el de desarrollo (312 5967913): la página debe seguir siendo
-  funcional y no debe presentarlo como dato definitivo de producción.
+- El número de contacto es el definitivo (324 2052047): la página debe seguir siendo funcional
+  y debe presentarlo como dato definitivo de producción.
 - Las imágenes de marca o de producto no cargan o tardan: la página conserva su estructura y
   su mensaje principal.
 - El visitante abre la página en una anchura pequeña mientras usa el carrusel: las imágenes y
@@ -418,8 +417,8 @@ La página de inicio está terminada cuando:
    movimiento activada, se muestran sin animación y completas.
 5. La página usa el azul #2E3192 como color principal y el #FFC908 como acento, y el logotipo
    del encabezado se muestra sin deformar ni duplicarse en el hero.
-6. La página ofrece acceso directo a WhatsApp con el número 312 5967913, definido en un único
-   lugar y marcado como temporal.
+6. La página ofrece acceso directo a WhatsApp con el número 324 2052047, definido en un único
+   lugar como dato definitivo de producción.
 7. La sección final presenta las tres acciones (solicitar servicio, seguimiento, contacto),
    con "solicitar un servicio" diferenciada como acción principal, y cada una conduce a su
    destino.
@@ -460,8 +459,6 @@ La página de inicio está terminada cuando:
 - [NECESITA ACLARACIÓN] Logotipos de las marcas: pendientes de aportar por el usuario (no se
   generan); mientras tanto la página muestra los nombres de las marcas como texto; cuando
   existan irán en `frontend/public/img/marcas/`.
-- [NECESITA ACLARACIÓN] Número de contacto definitivo de producción; el +57 312 5967913 es
-  temporal, solo para desarrollo.
 - [NECESITA ACLARACIÓN] Mensaje inicial de la conversación de WhatsApp: no se ha definido su
   contenido.
 - [NECESITA ACLARACIÓN] Variantes del logotipo para fondos oscuros: los recursos de marca

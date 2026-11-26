@@ -4,6 +4,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   LogOut,
+  Package,
 } from "lucide-react";
 import { cerrarSesion } from "../services/api";
 import Seo from "../seo/Seo";
@@ -55,6 +56,15 @@ function AdminLayout() {
           >
             <LayoutDashboard size={18} aria-hidden="true" />
             Resumen operativo
+          </NavLink>
+          <NavLink
+            to={rutaAdmin("productos")}
+            className={({ isActive }) =>
+              `admin-nav__link${isActive ? " is-active" : ""}`
+            }
+          >
+            <Package size={18} aria-hidden="true" />
+            Productos
           </NavLink>
           <NavLink
             to={rutaAdmin("servicios")}

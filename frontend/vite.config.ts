@@ -16,6 +16,13 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // Referencias locales de imágenes (`/media/...`) en desarrollo. En
+      // producción las imágenes de la vitrina se sirven desde la base pública.
+      '/media': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })

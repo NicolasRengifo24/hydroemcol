@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from django.conf import settings
 from rest_framework import serializers
 
 from .estados import (
@@ -8,9 +9,10 @@ from .estados import (
     EstadoComponente,
     paso_publico_componente,
 )
-from .almacenamiento import url_fotografia
+from .almacenamiento import url_fotografia, url_imagen_vitrina
 from .models import (
     AprobacionServicio,
+    CategoriaProducto,
     Cliente,
     Componente,
     Cotizacion,
@@ -20,7 +22,9 @@ from .models import (
     Fotografia,
     HistorialComponente,
     HistorialServicio,
+    ImagenCarrusel,
     MedioAprobacion,
+    Producto,
     RegistroTecnico,
     ResultadoAprobacion,
     Servicio,
@@ -31,6 +35,7 @@ from .reglas import (
     resumen_cierre,
     tiene_trabajo_iniciado,
 )
+from .vitrina_reglas import clave_publica_producto
 
 
 def construir_hoy(servicio):
@@ -826,3 +831,102 @@ class SolicitudPublicaSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         return attrs
+
+
+# ─────────────────────────────────────────────────────────────
+# Serializers públicos de la vitrina (spec 013)
+# La API nunca expone pk, visibilidad ni fechas: el producto se identifica
+# con una clave opaca y el carrusel solo entrega URL y texto alternativo.
+# ─────────────────────────────────────────────────────────────
+
+def categorias_publicas():
+    """Catálogo cerrado aprobado, en su orden, sin identificadores internos."""
+    return [
+        {'slug': valor, 'nombre': etiqueta}
+        for valor, etiqueta in CategoriaProducto.choices
+    ]
+
+
+class ProductoPublicoSerializer(serializers.ModelSerializer):
+    """Ítem del catálogo público (RF-VIT-03/05)."""
+
+    clave = serializers.SerializerMethodField()
+    categoria = serializers.SerializerMethodField()
+    imagen = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Producto
+        fields = ['clave', 'nombre', 'categoria', 'descripcion', 'imagen']
+        read_only_fields = fields
+
+    def get_clave(self, obj):
+        return clave_publica_producto(obj.pk, settings.SECRET_KEY)
+
+    def get_categoria(self, obj):
+        return {'slug': obj.categoria, 'nombre': obj.get_categoria_display()}
+
+    def get_imagen(self, obj):
+        return {
+            'url': url_imagen_vitrina(obj.imagen_referencia),
+            'alt': obj.imagen_alt,
+        }
+
+
+class ImagenCarruselPublicoSerializer(serializers.ModelSerializer):
+    """Imagen visual del carrusel: solo URL y alt (RF-VIT-15)."""
+
+    url = serializers.SerializerMethodField()
+    alt = serializers.CharField(source='imagen_alt', read_only=True)
+
+    class Meta:
+        model = ImagenCarrusel
+        fields = ['url', 'alt']
+        read_only_fields = fields
+
+    def get_url(self, obj):
+        return url_imagen_vitrina(obj.imagen_referencia)
+
+
+# ─────────────────────────────────────────────────────────────
+# Serializer administrativo de la vitrina (spec 013)
+# ─────────────────────────────────────────────────────────────
+
+class ProductoAdminSerializer(serializers.ModelSerializer):
+    """Contrato administrativo de un producto (plan §4.2).
+
+    ``imagen`` es el único campo de escritura sin columna en el modelo: la
+    vista la procesa, la guarda y fija ``imagen_referencia``. El cliente no
+    envía referencias ni fechas; ``visible`` se cambia por PATCH.
+    """
+
+    imagen = serializers.FileField(write_only=True, required=False)
+
+    class Meta:
+        model = Producto
+        fields = [
+            'id', 'nombre', 'categoria', 'descripcion', 'imagen',
+            'imagen_alt', 'visible', 'fecha_creacion', 'fecha_actualizacion',
+        ]
+        read_only_fields = ['id', 'fecha_creacion', 'fecha_actualizacion']
+        # El alt se entrega dentro de `imagen`; como campo suelto solo se
+        # acepta en la escritura.
+        extra_kwargs = {'imagen_alt': {'write_only': True}}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # En creación la imagen es obligatoria (RF-VIT-12); en actualización
+        # es opcional y su ausencia conserva la actual.
+        if self.instance is None:
+            self.fields['imagen'].required = True
+
+    def to_representation(self, instance):
+        datos = super().to_representation(instance)
+        datos['categoria'] = {
+            'slug': instance.categoria,
+            'nombre': instance.get_categoria_display(),
+        }
+        datos['imagen'] = {
+            'url': url_imagen_vitrina(instance.imagen_referencia),
+            'alt': instance.imagen_alt,
+        }
+        return datos

@@ -9,8 +9,8 @@
 export const URL_SITIO = "https://www.hydroemcol.com";
 
 // Número de contacto en formato apto para enlaces (`https://wa.me/...`, `tel:`).
-// TEMPORAL de desarrollo: pendiente del número definitivo de producción (RF-9.2).
-export const NUMERO_CONTACTO = "+573138343980";
+// Número definitivo de la empresa, confirmado por el usuario (RF-9.1).
+export const NUMERO_CONTACTO = "+573242052047";
 
 // Número de contacto tal como se muestra al visitante (RF-9.1).
 export const NUMERO_CONTACTO_MOSTRADO = NUMERO_CONTACTO.replace(
@@ -41,6 +41,19 @@ export function urlWhatsApp(mensaje: string = MENSAJE_WHATSAPP): string {
 // Enlace de llamada telefónica al mismo número (RF-9.4).
 export function urlLlamada(): string {
   return `tel:${NUMERO_CONTACTO}`;
+}
+
+// Mensaje aprobado para consultar por un producto de la vitrina (RF-VIT-23).
+// Solo se sustituye el nombre; las comillas tipográficas y el punto final son
+// parte del texto aprobado y no deben cambiar.
+export function mensajeProducto(nombre: string): string {
+  return `Hola, quiero información sobre el producto “${nombre}” que vi en la página de Hydroemcol.`;
+}
+
+// Enlace de WhatsApp de un producto. Reutiliza el número central: no existe un
+// número configurable por producto.
+export function urlWhatsAppProducto(nombre: string): string {
+  return urlWhatsApp(mensajeProducto(nombre));
 }
 
 // Dirección física de la empresa, aprobada por el usuario (RF-10.1, D-6 de

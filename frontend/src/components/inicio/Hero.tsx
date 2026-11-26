@@ -13,11 +13,18 @@ const ICONOS_HERO = [Wrench, Package, Gauge]
 interface HeroProps {
   ctaTexto: string
   ctaTo: string
+  ctaSecundarioTexto?: string
+  ctaSecundarioTo?: string
 }
 
 // Hero de la página de inicio (RF-2): video de fondo del banco de pruebas, velo de
-// color de marca, mensaje principal, llamada a la acción y tres tarjetas de vidrio.
-export function Hero({ ctaTexto, ctaTo }: HeroProps) {
+// color de marca, mensaje principal, llamadas a la acción y tres tarjetas de vidrio.
+export function Hero({
+  ctaTexto,
+  ctaTo,
+  ctaSecundarioTexto,
+  ctaSecundarioTo,
+}: HeroProps) {
   const revelarTexto = useRevelar({ direccion: 'izquierda', distancia: 20 })
   const [reducirMovimiento, setReducirMovimiento] = useState(() =>
     typeof window !== 'undefined'
@@ -56,9 +63,19 @@ export function Hero({ ctaTexto, ctaTo }: HeroProps) {
           <h1 id="inicio-hero" className="hero__mensaje">
             {MENSAJE_HERO}
           </h1>
-          <Link to={ctaTo} className="hero__cta">
-            {ctaTexto}
-          </Link>
+          <div className="hero__acciones">
+            <Link to={ctaTo} className="hero__cta">
+              {ctaTexto}
+            </Link>
+            {ctaSecundarioTexto && ctaSecundarioTo ? (
+              <Link
+                to={ctaSecundarioTo}
+                className="hero__cta hero__cta--secundario"
+              >
+                {ctaSecundarioTexto}
+              </Link>
+            ) : null}
+          </div>
         </m.div>
 
         <div className="hero__tarjetas">

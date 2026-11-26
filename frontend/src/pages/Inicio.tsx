@@ -8,7 +8,12 @@ import '../components/inicio/inicio.css'
 function Inicio() {
   return (
     <>
-      <Hero ctaTexto="Solicitar un servicio" ctaTo="/solicitar" />
+      <Hero
+        ctaTexto="Solicitar servicio"
+        ctaTo="/solicitar"
+        ctaSecundarioTexto="Ver repuestos"
+        ctaSecundarioTo="/productos"
+      />
       <BloqueServiciosDestacados />
       <BloqueCapacidadTecnica />
       <BloquePasos />
